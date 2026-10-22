@@ -7,8 +7,14 @@ import unittest
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-CHAPTERS=["01-symbolic-grammar","02-ngram-language-model",
-          "03-hmm-viterbi","04-tfidf-bm25-search","05-word2vec-skipgram"]
+CHAPTERS=[
+    "01-symbolic-grammar","02-ngram-language-model","03-hmm-viterbi",
+    "04-tfidf-bm25-search","05-word2vec-skipgram","06-rnn-lstm",
+    "07-seq2seq-attention","08-transformer-attention","09-bert-mlm",
+    "10-gpt-causal-lm","11-t5-span-corruption","12-sft-dpo-alignment",
+    "13-rag-retrieval","14-reasoning-rl-verifier","15-data-cleaning-minhash",
+    "16-lora-finetuning","17-scaling-laws"
+]
 
 class MVPTests(unittest.TestCase):
     def test_full_pipeline(self):
@@ -25,6 +31,10 @@ class MVPTests(unittest.TestCase):
                     self.assertTrue(path.is_file(),path)
                 output=json.loads(artifacts[0].read_text(encoding="utf-8"))
                 self.assertIn("metrics",output)
+                self.assertIn("task",output["metrics"])
+                self.assertIn("seed",output)
+                self.assertIsInstance(output["metrics"]["task"],str)
+                self.assertGreater(len(output["metrics"]),2)
                 self.assertTrue(json.loads(artifacts[1].read_text(encoding="utf-8").splitlines()[0]))
                 self.assertGreater(artifacts[2].stat().st_size,0)
 
