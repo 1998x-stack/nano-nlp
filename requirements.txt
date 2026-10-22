@@ -1,0 +1,2 @@
+# Only neural chapters need PyTorch.
+torch>=2.1,<3
