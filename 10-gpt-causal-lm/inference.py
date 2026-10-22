@@ -9,7 +9,7 @@ def infer(directory, text=None, *, temperature=0.0, top_k=0, num_new_tokens=40):
     meta = read_torch_metadata(directory)
     chars = meta["chars"]
     stoi = {ch:i for i,ch in enumerate(chars)}
-    prompt = text if text is not None else chars[0]
+    prompt = text if text is not None else next(ch for ch in chars if len(ch) == 1)
     if not prompt or any(ch not in stoi for ch in prompt):
         raise ValueError("prompt 不得为空或包含词表外字符；需与训练语料的字符集合一致")
     config = Config(block_size=meta["block_size"], n_embd=meta["n_embd"],

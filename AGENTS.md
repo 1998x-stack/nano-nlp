@@ -60,3 +60,12 @@
 - 训练历史必须来自 `utils.v2io.record_step` 实际运行；可视化不得把示意曲线标记为真实训练记录。
 - 外部数据严格依照 [fixtures/README.md](fixtures/README.md) 的 schema；不能把无标签 Hugging Face 原始文本伪装成监督/检索相关性数据。
 - 除纯算法不变量外，还需测试两个独立 Python 进程的 `train→predict`，以及真实数据字段的合法/非法输入。
+
+## v3.0 · 禁止评测泄漏与来源丢失
+
+- 构建 vocab、IDF、规则/词典、分布统计时只能使用训练/索引输入，不得利用验证标签或验证专有 token 做训练前的映射。
+- 凡报告 perplexity，必须说明 token 分母并确保验证目标全覆盖（包括不足一个 block 的尾部）。
+- `<unk>` 必须是输出空间中可计数且可归一化的类别；未见 token 不能凭空增加概率质量。
+- 同一完整输入若对应冲突标签，先检查数据定义，不要用更多训练轮数掩盖不可辨识性。
+- 每次运行必须输出 `manifest.json`，记录数据 SHA-256 与 artifact hash；v3 恢复预测前应检查 manifest。哈希用于完整性检测而非签名认证。
+- toy/seen-prompt/held-out 与官方 benchmark 指标要在 README 和 metrics 中严格区别；未经独立测试，不使用“性能已验证”表述。

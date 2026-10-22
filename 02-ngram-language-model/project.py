@@ -3,7 +3,7 @@ import math
 from loguru import logger
 from utils.v2io import save_json_state, load_json_state
 from data import TRAIN, VALID
-from model import BigramLM
+from model import BigramLM, UNK
 
 def generate(lm, start="the", max_tokens=8):
     """贪心生成：每一步只用之前一个 token。"""
@@ -32,15 +32,16 @@ def run(*, steps=1, seed=42, text_file=None):
     logger.info("fitting bigram counts: train={} valid={}",len(train),len(valid))
     model = BigramLM().fit(train)
     examples = []
-    total_nll, tokens = 0., 0
+    total_nll, tokens, oov_tokens = 0., 0, 0
     for sentence in valid:
         prev = "<bos>"
         nll = 0.0
         for word in sentence.lower().split() + ["<eos>"]:
-            # 对 OOV 明确提示，不把未见词的概率误当已训练词表归一化概率。
+            # held-out OOV 显式作为单一 <unk> 事件，概率总质量仍归一化。
             if word not in model.vocab:
-                logger.warning("OOV token '{}' in validation; smoothed score is heuristic",word)
-            prob = model.probability(prev,word)
+                oov_tokens += 1
+                logger.debug("validation OOV {} mapped to {}", word, UNK)
+            prob = model.probability(prev, word)
             nll -= math.log(prob)
             tokens += 1
             prev = word
@@ -52,7 +53,8 @@ def run(*, steps=1, seed=42, text_file=None):
     save_json_state({"vocab": sorted(model.vocab), "counts": {k: dict(v) for k, v in model.counts.items()}})
 
     return {"task":"next_word_prediction","train_samples":len(train),"valid_samples":len(valid),
-            "vocab_size":len(model.vocab),"val_nll":round(avg_nll,6),
+            "vocab_size":len(model.vocab), "val_oov_tokens":oov_tokens,
+            "val_evaluated_tokens":tokens, "vocab_scope":"train_only", "val_nll":round(avg_nll,6),
             "val_perplexity":round(math.exp(avg_nll),5),"generated":generated}, examples
 
 

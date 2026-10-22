@@ -1,4 +1,4 @@
-{"prompt":0,"chosen":1,"rejected":0}
-{"prompt":1,"chosen":0,"rejected":1}
-{"prompt":0,"chosen":0,"rejected":1}
-{"prompt":1,"chosen":1,"rejected":0}
+{"id":"case-a","prompt":0,"chosen":1,"rejected":0}
+{"id":"case-b","prompt":1,"chosen":0,"rejected":1}
+{"id":"case-c","prompt":0,"chosen":1,"rejected":0}
+{"id":"case-d","prompt":1,"chosen":0,"rejected":1}

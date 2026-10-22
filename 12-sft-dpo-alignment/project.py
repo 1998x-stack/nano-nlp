@@ -38,6 +38,18 @@ def run(*,steps=30,seed=42,text_file=None):
         a,b=nonoverlap_split(rows)
         train=[(r["prompt"],r["chosen"],r["rejected"]) for r in a]
         valid=[(r["prompt"],r["chosen"],r["rejected"]) for r in b]
+    # 这章的策略仅是 prompt-id -> 二分类查表，无法评估未见 prompt 的泛化。
+    # 同一 prompt 不能同时以相反 chosen 作监督；真实偏好数据应有更丰富的输入。
+    preference_by_prompt={}
+    for prompt_id, chosen_id, rejected_id in list(train)+list(valid):
+        if chosen_id==rejected_id:
+            raise ValueError("chosen/rejected 不能相同")
+        if prompt_id in preference_by_prompt and preference_by_prompt[prompt_id]!=chosen_id:
+            raise ValueError("同一个二分类 prompt 存在互相矛盾的偏好标签")
+        preference_by_prompt[prompt_id]=chosen_id
+    train_prompts={item[0] for item in train}
+    eval_prompts={item[0] for item in valid}
+    prompt_overlap=len(train_prompts & eval_prompts)
     prompt=torch.tensor([r[0] for r in train])
     chosen=torch.tensor([r[1] for r in train])
     rejected=torch.tensor([r[2] for r in train])
@@ -86,7 +98,10 @@ def run(*,steps=30,seed=42,text_file=None):
     return {"task":"preference_optimization","sft_steps":sft_steps,"dpo_steps":max(1,steps-sft_steps),
             "reference_frozen":all(not p.requires_grad for p in reference.parameters()),
             "val_chosen_win_rate":preference_accuracy,
-            "mean_log_margin_improvement":round(improvement,5)},rows
+            "mean_log_margin_improvement":round(improvement,5),
+            "evaluation_scope":"seen_prompts" if prompt_overlap else "unseen_prompts",
+            "val_prompt_overlap":prompt_overlap,
+            "seen_prompt_chosen_win_rate":preference_accuracy},rows
 
 
 def predict_saved(directory, text=None):

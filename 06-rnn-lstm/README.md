@@ -97,3 +97,20 @@ python -m unittest discover -s tests -v
 2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
 3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
 4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？
+
+
+## v3.0 · 验证词表与 NLL 纠偏
+
+v2 在全量语料上建立字符表，且验证损失使用固定窗口简单平均：可能看到未来验证集才有的字符，也会漏掉最后不足一个 block 的目标字符。
+
+v3 使用 [utils/lm_eval.py](../utils/lm_eval.py) 完成：
+
+1. **先切分文本**，再只从训练段构建 `[<unk>, sorted(train_chars)]`。
+2. 验证未见字符 ID 固定映射为 0，并记录 `val_oov_tokens`。
+3. 遍历验证段的每个目标字符（最后一段不足 `BLOCK` 也纳入）。
+4. 计算 `mean NLL = Σ_i (window_loss_i × window_targets_i) / Σ_i window_targets_i`，其中 `val_evaluated_tokens=len(validation_ids)-1`。
+5. `val_perplexity=exp(mean NLL)`；模型的词表、unk_id 和窗口长度一同保存。
+
+命令：`python 06-rnn-lstm/demo.py --steps 30 --output-dir outputs/lstm-v3`。之后可在独立进程恢复并生成；通过 `python 06-rnn-lstm/demo.py --mode inspect --output-dir outputs/lstm-v3` 核验实验血缘。
+
+**注意：** 验证文本与训练文本若具有高度重复的模板，仍可能高估真实语言泛化。这里只纠正计算协议，未宣称 Toy 语料构成严谨公开基准。

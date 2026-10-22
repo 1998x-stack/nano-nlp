@@ -95,3 +95,22 @@ python -m unittest discover -s tests -v
 2. 从训练/验证路径出发，列出三处潜在的信息泄漏来源，并指出代码中的防护点。
 3. 不重新训练，删除当前 Python 进程，再使用 checkpoint 恢复推理；比较相同输入的输出。
 4. 给出本章方法与之前一代模型的性能、假设或可解释性取舍；指出本章明确没有实现的论文内容。
+
+
+## v3.0 · 训练词表泄漏和验证 token 覆盖
+
+相对于 v2，GPT 的新训练协议必须满足：
+
+- 先切分训练/验证文本；只有 **训练段** 决定字符词表。
+- 专门为未知字符保留 `<unk>` 类别；验证集未见字符可参与交叉熵评估，但不能进入词表。
+- 验证窗口 `start:end` 的标签来自 `start+1:end+1`；`end=min(start+block_size, len(val)-1)`，尾部不能多取无标签位置。
+- 汇总 `Σ window CE×有效预测 token数 / 全部预测 token数`，不是窗口 loss 的未加权均值。
+- 指标新增 `val_oov_tokens`、`val_evaluated_tokens` 和 `vocab_scope=train_only`，权重 checkpoint 保留 `unk_id`。
+
+```bash
+python 10-gpt-causal-lm/demo.py --steps 30 --output-dir outputs/gpt-v3
+python 10-gpt-causal-lm/demo.py --mode inspect --output-dir outputs/gpt-v3
+python 10-gpt-causal-lm/demo.py --mode predict --output-dir outputs/gpt-v3 --input 'to' --new-tokens 20
+```
+
+**重要洞察：** 验证 NLL/PPL 是概率模型在 held-out 字符上的条件预测损失；可复现的计算方法比让数值变得好看更重要。
