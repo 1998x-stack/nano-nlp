@@ -7,6 +7,7 @@
 ## 运行 (先离线后扩展)
 
 ```bash
+python -m pip install -r requirements-classic.txt
 python 04-tfidf-bm25-search/demo.py 
 python -m http.server 8000  # 访问 /04-tfidf-bm25-search/index.html
 ```
@@ -30,7 +31,7 @@ BM25 综合词频饱和、文档长度归一化和逆文档频率，代表了可
 
 ## 重点阅读代码
 
-打开 [demo.py](./demo.py)，先读数据定义，再读核心函数，最后读 `if __name__ == "__main__"`。关键算法旁有中文注释；不需要先学复杂工程框架。
+推荐先读 [data.py](./data.py) 的任务样本、[model.py](./model.py) 的核心公式实现，再看 [project.py](./project.py) 的训练/验证/保存流程。最后运行 [demo.py](./demo.py)：它只是 loguru CLI 入口，不是算法本体。
 
 ## 数据集 (进阶，可选)
 
