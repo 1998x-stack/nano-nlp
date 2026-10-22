@@ -146,3 +146,18 @@ python -m unittest discover -s tests -v
 
 **范围说明：** 完整教学型 MVP ≠ 完整工业框架或论文复现实验。RAG 采用抽取式证据回答而非外部 LLM 生成；推理 RL 是验证奖励的简化 policy gradient；Scaling Laws 的损失曲线是假设函数；真实 benchmark、复杂数据清洗与工业训练规模未被这些 toy 指标证明。
 
+
+## v3.0 · 评测可信度优先
+
+此分支在 17 个 v2.0 可执行 MVP 基础上，重点修复 **OOV 概率归一化、训练/验证词表泄漏、token 级验证覆盖、冲突 toy 标签**，并引入运行数据血缘记录。内容详见 [V3_REVIEW_AND_PLAN.md](V3_REVIEW_AND_PLAN.md)。
+
+```bash
+git checkout v3.0
+python -m pip install -r requirements.txt
+python 02-ngram-language-model/demo.py --output-dir outputs/bigram-v3
+python 06-rnn-lstm/demo.py --steps 30 --output-dir outputs/lstm-v3
+python 10-gpt-causal-lm/demo.py --steps 30 --output-dir outputs/gpt-v3
+python -m unittest discover -s tests -v
+```
+
+请不要将数十步 toy loss 或单一 seed 结果当作原论文的 benchmark；对外使用结果时应保存来源、split 和代码版本。
