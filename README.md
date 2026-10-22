@@ -9,6 +9,7 @@
 ```bash
 git clone https://github.com/1998x-stack/nano-nlp.git
 cd nano-nlp
+git checkout v2.0  # 查看完整 MVP 改造分支
 python 01-symbolic-grammar/demo.py      # 零依赖
 python 04-tfidf-bm25-search/demo.py    # 零依赖
 python -m pip install -r requirements.txt
@@ -103,3 +104,7 @@ nano-nlp/
 
 - [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy（参考简洁的训练与数据准备风格；本仓库算法代码独立编写）
 - [Hugging Face Datasets](https://huggingface.co/datasets) 与各原始论文作者；本项目不将外部数据集/论文版权转移给教材。
+
+## v2.0 模块化改造
+
+[完整改造计划](V2_PLAN.md)。章节正升级成 `data.py + model.py + project.py + demo.py`，使用 loguru 记录实验并保存指标和逐样本结果。第一批已完成 01–05 的任务闭环；其他章节将在验收通过后按阶段标记。

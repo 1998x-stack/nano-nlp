@@ -67,7 +67,7 @@ def run_cli(project, *, default_steps=30, default_output=None):
     parser = argparse.ArgumentParser(description=project.__doc__ or "NLP mini project")
     parser.add_argument("--steps", type=int, default=default_steps)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output-dir", default=default_output or str(ROOT / "outputs" / project.__package__.split(".")[0]))
+    parser.add_argument("--output-dir", default=default_output or str(ROOT / "outputs" / Path(project.__file__).resolve().parent.name))
     parser.add_argument("--text-file", type=Path, help="可选本地数据文本；仅支持该选项的章节会读取它")
     args = parser.parse_args()
     if args.steps < 1:
