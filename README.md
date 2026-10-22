@@ -10,15 +10,16 @@
 git clone https://github.com/1998x-stack/nano-nlp.git
 cd nano-nlp
 git checkout v2.0  # 查看完整 MVP 改造分支
-python 01-symbolic-grammar/demo.py      # 零依赖
-python 04-tfidf-bm25-search/demo.py    # 零依赖
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-classic.txt  # 经典 NLP 仅需 loguru
+python 01-symbolic-grammar/demo.py
+python 04-tfidf-bm25-search/demo.py
+python -m pip install -r requirements.txt          # 神经章节另需 PyTorch
 python 10-gpt-causal-lm/demo.py --steps 25
 python -m unittest discover -s tests -v
 python -m http.server 8000             # 浏览器访问 /10-gpt-causal-lm/index.html
 ```
 
-Python 3.10+。Torch 仅对神经网络章节必要；基础统计章节没有第三方依赖。**所有章节默认离线运行，无需 GPU、API Key 或下载大型模型。**
+Python 3.10+。Torch 仅对神经网络章节必要；经典算法核心只用 Python 标准库，但完整实验 CLI 需要 loguru。**所有章节默认离线运行，无需 GPU、API Key 或下载大型模型。**
 
 ## NLP 历史：17 个可执行实验
 

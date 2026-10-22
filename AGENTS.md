@@ -51,3 +51,12 @@
 - 注释解释**为何这样做、关键张量形状、泄漏风险与实现约束**。不要逐行翻译代码或用注释重复显然的 Python 语句。
 - 必须有每章特定交互和机制验证；统计玩具展示必须与真实实验指标区分，可导入并呈现 JSON 指标。
 - 测试必须检查核心正确性、泛化评估划分、可复现性、checkpoint 恢复和合理非法输入。两步 smoke 仅证明基本可执行。
+
+## 可复现实验注意事项（v2.0）
+
+- 从项目根目录执行 `demo.py --steps N --output-dir outputs/<stage>`，独立恢复用 `--mode predict --output-dir <同一路径> --input '...'`。
+- `model.py` 不在 import 时下载或训练。只有 `project.run` 才能优化参数和生成训练工件。
+- PyTorch 序列化只保存可信模型类的 `state_dict`、词表及 primitive 构造参数；恢复时必须 `weights_only=True`，禁止接受任意 pickle 反序列化。
+- 训练历史必须来自 `utils.v2io.record_step` 实际运行；可视化不得把示意曲线标记为真实训练记录。
+- 外部数据严格依照 [fixtures/README.md](fixtures/README.md) 的 schema；不能把无标签 Hugging Face 原始文本伪装成监督/检索相关性数据。
+- 除纯算法不变量外，还需测试两个独立 Python 进程的 `train→predict`，以及真实数据字段的合法/非法输入。
