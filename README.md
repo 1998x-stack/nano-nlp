@@ -57,6 +57,8 @@ pip install -r requirements-data.txt
 python scripts/prepare_data.py --lesson 10-gpt-causal-lm --limit 200
 python scripts/prepare_data.py --lesson 14-reasoning-rl-verifier --limit 100
 python scripts/prepare_shakespeare.py --limit-chars 50000
+python 10-gpt-causal-lm/demo.py --steps 50 --text-file data/tiny_shakespeare_sample.txt
+python 06-rnn-lstm/demo.py --steps 50 --text-file data/tiny_shakespeare_sample.txt
 ```
 
 上述命令只**准备数据**，不会悄悄启动大型训练或把外部数据直接塞进所有 demo；进阶读者根据每章字段和任务改写 toy loader。统一保存为 `data/<chapter>/samples.jsonl`；Tiny Shakespeare 另存为 `data/tiny_shakespeare_sample.txt`。
@@ -95,7 +97,7 @@ nano-nlp/
 
 ## 参与开发
 
-阅读 [AGENTS.md](AGENTS.md) 查看教学标准、文件命名、可靠性和版权规范。欢迎按 18-xxx-xxx 继续扩展 CRF、GloVe、ELMo、RoBERTa、Contrastive Learning、Reranker、Mixture-of-Experts 与长上下文。
+阅读 [STYLE.md](STYLE.md) 了解 nanoGPT 风格来源；阅读 [AGENTS.md](AGENTS.md) 查看教学标准、文件命名、可靠性和版权规范。欢迎按 18-xxx-xxx 继续扩展 CRF、GloVe、ELMo、RoBERTa、Contrastive Learning、Reranker、Mixture-of-Experts 与长上下文。
 
 ## 致谢
 

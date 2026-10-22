@@ -78,6 +78,25 @@ class CurriculumTests(unittest.TestCase):
         best, _ = m.search_budget(1024)
         self.assertLessEqual(best[1]*best[2],1024)
 
+
+    def test_local_text_input(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("torch 未安装")
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tiny.txt"
+            path.write_text("simple text for tiny language models! " * 4, encoding="utf-8")
+            for lesson in ("06-rnn-lstm", "10-gpt-causal-lm"):
+                with self.subTest(lesson=lesson):
+                    proc = subprocess.run(
+                        [sys.executable, str(ROOT/lesson/"demo.py"),
+                         "--steps", "2", "--text-file", str(path)],
+                        cwd=ROOT, capture_output=True, text=True, timeout=50)
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    self.assertIn("RESULT:", proc.stdout)
+
     def test_optional_torch_smoke(self):
         try:
             import torch
