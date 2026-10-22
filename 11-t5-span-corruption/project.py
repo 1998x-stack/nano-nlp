@@ -22,25 +22,38 @@ def generate(model,src,length=5):
 
 def run(*,steps=30,seed=42,text_file=None):
     torch.manual_seed(seed);torch.set_num_threads(1)
-    src=torch.tensor([a for a,b in TRAIN]);target=torch.tensor([b for a,b in TRAIN])
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        rows=read_jsonl(text_file)
+        if len(rows)<4 or not all(isinstance(r.get("source"),list) and
+            isinstance(r.get("target"),list) and len(r["source"])==5 and len(r["target"])==5
+            and all(type(v) is int and 0<=v<10 for v in r["source"]+r["target"])
+            and 7 in r["source"] and 8 in r["source"]
+            and r["target"][0]==7 and r["target"][-1]==9 for r in rows):
+            raise ValueError("T5 JSONL: source/target 各5个token 0..9, 含sentinel7/8, target EOS9")
+        a,b=nonoverlap_split(rows)
+        train=[(r["source"],r["target"]) for r in a]
+        valid=[(r["source"],r["target"]) for r in b]
+    src=torch.tensor([a for a,b in train]);target=torch.tensor([b for a,b in train])
     model=TinyT5();optim=torch.optim.AdamW(model.parameters(),lr=.02)
     for t in range(steps):
         logits=model(src,decoder_input(target))
         loss=F.cross_entropy(logits.reshape(-1,10),target.reshape(-1))
         optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("T5 train step={} loss={:.4f}",t+1,loss.item())
-    valid_src=torch.tensor([a for a,b in VALID])
-    valid_target=torch.tensor([b for a,b in VALID])
+    valid_src=torch.tensor([a for a,b in valid])
+    valid_target=torch.tensor([b for a,b in valid])
     model.eval()
     with torch.no_grad():
         pred=generate(model,valid_src,valid_target.size(1))
         acc=(pred==valid_target).float().mean().item()
         seq_acc=(pred==valid_target).all(-1).float().mean().item()
     rows=[{"corrupted":s,"target":target,"generated":actual}
-          for (s,target),actual in zip(VALID,pred.tolist())]
+          for (s,target),actual in zip(valid,pred.tolist())]
     save_torch_state(model, {"vocab": 10, "dim": 32, "task": "span_corruption"})
 
-    return {"task":"span_corruption","train_pairs":len(TRAIN),
+    return {"task":"span_corruption","train_pairs":len(train),
             "val_token_accuracy":round(acc,5),"val_exact_match":round(seq_acc,5)},rows
 
 

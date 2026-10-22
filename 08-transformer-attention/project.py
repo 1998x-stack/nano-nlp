@@ -26,27 +26,38 @@ class AttentionClassifier(nn.Module):
 
 def run(*,steps=30,seed=42,text_file=None):
     torch.manual_seed(seed);torch.set_num_threads(1)
-    x=torch.tensor([a for a,b in TRAIN]);y=torch.tensor([b for a,b in TRAIN])
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        rows=read_jsonl(text_file)
+        if len(rows)<4 or not all(isinstance(r.get("tokens"),list) and len(r["tokens"])==4
+                   and all(type(t) is int and 0<=t<4 for t in r["tokens"])
+                   and r.get("label") in (0,1) for r in rows):
+            raise ValueError("Attention JSONL: tokens长度4范围0..3, label 0/1")
+        a,b=nonoverlap_split(rows)
+        train=[(r["tokens"],r["label"]) for r in a]
+        valid=[(r["tokens"],r["label"]) for r in b]
+    x=torch.tensor([a for a,b in train]);y=torch.tensor([b for a,b in train])
     model=AttentionClassifier();optim=torch.optim.AdamW(model.parameters(),lr=.035)
     for t in range(steps):
         logits,_=model(x)
         loss=F.cross_entropy(logits,y)
         optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("attention class step={} loss={:.4f}",t+1,loss.item())
-    valid=torch.tensor([a for a,b in VALID]);truth=torch.tensor([b for a,b in VALID])
+    valid_x=torch.tensor([a for a,b in valid]);truth=torch.tensor([b for a,b in valid])
     model.eval()
     with torch.no_grad():
-        logits,weights=model(valid)
+        logits,weights=model(valid_x)
         preds=logits.argmax(-1)
         acc=(preds==truth).float().mean().item()
         # 看末尾分类 token 对前面词的可见注意力。
         attention_last=weights.mean(1)[:,-1].tolist()
     rows=[{"tokens":x,"gold":y,"pred":int(p),"attention_last":list(map(lambda v:round(v,4),a))}
-          for (x,y),p,a in zip(VALID,preds.tolist(),attention_last)]
+          for (x,y),p,a in zip(valid,preds.tolist(),attention_last)]
     save_torch_state(model, {"vocab": 4, "max_length": 4, "task": "attention_classification"})
 
-    return {"task":"attention_classification","train_samples":len(TRAIN),
-            "valid_samples":len(VALID),"val_accuracy":round(acc,5)},rows
+    return {"task":"attention_classification","train_samples":len(train),
+            "valid_samples":len(valid),"val_accuracy":round(acc,5)},rows
 
 
 def predict_saved(directory, text=None):
