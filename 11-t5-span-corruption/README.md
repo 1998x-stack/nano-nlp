@@ -47,3 +47,17 @@ https://www.jmlr.org/papers/volume21/20-074/20-074.pdf
 - 修改一个参数（例如 rank、beta、budget、k、steps），预测结果变化再运行验证。
 - 列出此算法的监督信号来自哪里：标签、偏好、最终奖励、检索文档还是无监督统计？
 - 运行根目录单元测试，检查边界条件。
+
+## v2.0 · 完整 MVP 实验
+
+本章拆分为 `data.py`（明确训练与验证数据）、`model.py`（注意力/门控/目标函数实现）、`project.py`（训练→held-out 验证→推理）、`demo.py`（loguru CLI）。不再以“输出一个张量”作为验收。
+
+```bash
+pip install -r requirements.txt
+python 11-t5-span-corruption/demo.py --steps 30 --output-dir outputs/11-t5-span-corruption
+cat outputs/11-t5-span-corruption/metrics.json
+```
+
+**本章实际可验收任务：** span corruption 的 Encoder–Decoder 训练及自回归片段重建；返回 exact match 与 token accuracy。
+
+**研究边界：** 数据集刻意很小，验证指标说明管线完整，不证明真实任务泛化。保留原始论文链接，区别本例与论文的完整训练配方。

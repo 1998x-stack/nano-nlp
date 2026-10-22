@@ -49,3 +49,17 @@ Self-Attention 本身不包含位置概念；需要显式位置编码或其他�
 - 查看每个 Tensor 维度，把 batch/seq/hidden/heads 逐一标注。
 - 改变 seed、steps 或窗口大小，观察结果和 loss 是否合理。
 - 思考本章模型在前一代模型上解决了什么问题，又留下了什么局限。
+
+## v2.0 · 完整 MVP 实验
+
+本章拆分为 `data.py`（明确训练与验证数据）、`model.py`（注意力/门控/目标函数实现）、`project.py`（训练→held-out 验证→推理）、`demo.py`（loguru CLI）。不再以“输出一个张量”作为验收。
+
+```bash
+pip install -r requirements.txt
+python 08-transformer-attention/demo.py --steps 30 --output-dir outputs/08-transformer-attention
+cat outputs/08-transformer-attention/metrics.json
+```
+
+**本章实际可验收任务：** 使用 causal multi-head attention 在 toy 分类上训练/验证，并保存末位置 attention 权重。
+
+**研究边界：** 数据集刻意很小，验证指标说明管线完整，不证明真实任务泛化。保留原始论文链接，区别本例与论文的完整训练配方。

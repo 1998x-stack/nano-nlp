@@ -48,3 +48,17 @@ LSTM 改善梯度流动却没有消除沿时间的串行计算。
 - 查看每个 Tensor 维度，把 batch/seq/hidden/heads 逐一标注。
 - 改变 seed、steps 或窗口大小，观察结果和 loss 是否合理。
 - 思考本章模型在前一代模型上解决了什么问题，又留下了什么局限。
+
+## v2.0 · 完整 MVP 实验
+
+本章拆分为 `data.py`（明确训练与验证数据）、`model.py`（注意力/门控/目标函数实现）、`project.py`（训练→held-out 验证→推理）、`demo.py`（loguru CLI）。不再以“输出一个张量”作为验收。
+
+```bash
+pip install -r requirements.txt
+python 06-rnn-lstm/demo.py --steps 30 --output-dir outputs/06-rnn-lstm
+cat outputs/06-rnn-lstm/metrics.json
+```
+
+**本章实际可验收任务：** 字符级语言建模；独立验证段 NLL、PPL 与不带标签的生成。
+
+**研究边界：** 数据集刻意很小，验证指标说明管线完整，不证明真实任务泛化。保留原始论文链接，区别本例与论文的完整训练配方。

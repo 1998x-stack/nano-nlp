@@ -48,3 +48,17 @@ https://arxiv.org/pdf/1810.04805
 - 查看每个 Tensor 维度，把 batch/seq/hidden/heads 逐一标注。
 - 改变 seed、steps 或窗口大小，观察结果和 loss 是否合理。
 - 思考本章模型在前一代模型上解决了什么问题，又留下了什么局限。
+
+## v2.0 · 完整 MVP 实验
+
+本章拆分为 `data.py`（明确训练与验证数据）、`model.py`（注意力/门控/目标函数实现）、`project.py`（训练→held-out 验证→推理）、`demo.py`（loguru CLI）。不再以“输出一个张量”作为验收。
+
+```bash
+pip install -r requirements.txt
+python 09-bert-mlm/demo.py --steps 30 --output-dir outputs/09-bert-mlm
+cat outputs/09-bert-mlm/metrics.json
+```
+
+**本章实际可验收任务：** 双向 Masked LM；训练只对 mask 位置计算 CE，验证单独逐位置 mask 并计算准确率。
+
+**研究边界：** 数据集刻意很小，验证指标说明管线完整，不证明真实任务泛化。保留原始论文链接，区别本例与论文的完整训练配方。
