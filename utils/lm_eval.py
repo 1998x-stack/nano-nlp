@@ -52,8 +52,10 @@ def heldout_token_nll(model, validation_ids, *, block_size: int):
     try:
         with torch.no_grad():
             for start in range(0, len(validation_ids)-1, block_size):
-                x = validation_ids[start:start+block_size][None, :]
-                y = validation_ids[start+1:start+block_size+1][None, :]
+                # 最后一段只能预测到 len(val)-1；不能把无标签的末尾位置作为 x。
+                end = min(start + block_size, len(validation_ids) - 1)
+                x = validation_ids[start:end][None, :]
+                y = validation_ids[start+1:end+1][None, :]
                 if x.numel() != y.numel():
                     raise AssertionError("next-token input and labels must align")
                 _, loss = model(x, y)
