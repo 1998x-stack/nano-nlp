@@ -40,6 +40,9 @@ def run(*,steps=30,seed=42,text_file=None):
         a,b=nonoverlap_split(rows)
         train=[(r["source"],r["target"]) for r in a]
         valid=[(r["source"],r["target"]) for r in b]
+    from utils.data import validate_conditional_pairs, reject_overlapping_pairs
+    validate_conditional_pairs(train + valid)
+    reject_overlapping_pairs(train, valid)
     src=torch.tensor([a for a,b in train])
     target=torch.tensor([b for a,b in train])
     model=TinyT5()

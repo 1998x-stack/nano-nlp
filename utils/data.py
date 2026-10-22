@@ -54,3 +54,25 @@ def nonoverlap_split(items, validation_ratio=0.25):
     if keys(train) & keys(valid):
         raise ValueError("训练和验证集合存在完全相同的样本：请先去重，再执行评估")
     return train,valid
+
+def validate_conditional_pairs(pairs):
+    """固定的可见输入不能同时映射到两个不同 target。
+
+    这不解决所有标签噪声，但能阻止 T5 这类确定性 toy 任务中的
+    *不可解冲突*。不同源句指向同一目标可以，反过来不允许。
+    """
+    seen = {}
+    for source, target in pairs:
+        key = tuple(source)
+        value = tuple(target)
+        if key in seen and seen[key] != value:
+            raise ValueError("同一输入对应多个矛盾目标；该 toy 任务无法被确定性学习")
+        seen[key] = value
+    return len(seen)
+
+def reject_overlapping_pairs(train, valid):
+    """拒绝完全相同的 (source,target) 同时出现在训练与验证。"""
+    train_keys = {(tuple(s), tuple(t)) for s, t in train}
+    valid_keys = {(tuple(s), tuple(t)) for s, t in valid}
+    if train_keys & valid_keys:
+        raise ValueError("验证集中复用了训练的完整输入-目标对")

@@ -7,7 +7,7 @@ def infer(directory, text=None):
     meta = read_torch_metadata(directory)
     chars = meta["chars"]
     stoi = {ch:i for i,ch in enumerate(chars)}
-    prompt = text if text is not None else chars[0]
+    prompt = text if text is not None else next(ch for ch in chars if len(ch) == 1)
     if not prompt or any(ch not in stoi for ch in prompt):
         raise ValueError("prompt 不得为空或包含不在训练语料中的字符")
     net = LSTMLM(len(chars), dim=meta["dim"])
