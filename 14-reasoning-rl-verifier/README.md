@@ -61,3 +61,35 @@ cat outputs/14-reasoning-rl-verifier/metrics.json
 **本章 MVP 的验收任务：** 采样分组候选答案，以外部确定性 verifier 评分并更新策略，在未训练数值上检查成功率。
 
 **误差分析方向：** 不把 toy 结果外推为工业训练能力；保留每条 examples.jsonl 并改变语料/阈值/随机种子，观察为什么结论会改变。
+
+## v2.0 深度：任务级的可运行研究 MVP
+
+**完整算法链路：** 从同一个算术问题采样多个候选运算，以确定性 verifier 核对最终结果，然后组内归一化 reward 得到 policy gradient。
+
+**读代码的顺序：** `data.py` 输入、切分、目标变量 → `model.py` 核心数学计算 → `project.py` 参数拟合/训练、验证和模型保存 → `inference.py` 恢复权重后执行预测 → `demo.py` CLI 包装。所有参数训练必须在当前章节显式可追踪。
+
+### 训练与独立进程恢复
+
+```bash
+python 14-reasoning-rl-verifier/demo.py --steps 30 --output-dir outputs/14-reasoning-rl-verifier
+python 14-reasoning-rl-verifier/demo.py --mode predict --output-dir outputs/14-reasoning-rl-verifier --input 'add,3,4'
+python -m unittest discover -s tests -v
+```
+一个完备实验会生成 `metrics.json`、`examples.jsonl`、`run.log`、`history.jsonl` 与 checkpoint（`checkpoint.pt` 或 `checkpoint.json`）。神经模型只保存权重张量及构造配置，使用 PyTorch weights_only 加载；经典算法保存可审查 JSON 状态。
+### 评估与反例
+
+**本章独立验证的核心证据：** val_success_rate、last_group_reward、采样概率、可验证执行结果。
+
+**最值得做的消融实验：** 令同组候选全部正确或全部错误，证明 advantage 无法提供有效梯度。
+
+**不要过度解读：** 只教学 group-normalized REINFORCE；未实现完整 GRPO 的 clipping、KL 和长轨迹。
+
+### 交互可视化与真实实验记录
+
+上方专属交互用于检查算法公式、张量流或模型机制；底部 Evidence Viewer 只能通过导入实际生成的 JSON/JSONL 显示指标、训练 loss 与预测样例。因此图上没有出现数据，不表示实验失败，而表示学习者尚未导入实验工件。
+### 进阶练习与验收
+
+1. 用自己的语言解释本章输入、标签或奖励的来源。哪些输出可以独立核验，哪些只能近似测量？
+2. 从训练/验证路径出发，列出三处潜在的信息泄漏来源，并指出代码中的防护点。
+3. 不重新训练，删除当前 Python 进程，再使用 checkpoint 恢复推理；比较相同输入的输出。
+4. 给出本章方法与之前一代模型的性能、假设或可解释性取舍；指出本章明确没有实现的论文内容。

@@ -61,3 +61,35 @@ cat outputs/13-rag-retrieval/metrics.json
 **本章 MVP 的验收任务：** 索引文档并进行检索，输出带来源 ID 的抽取式证据回答；报告查询级证据召回和无证据拒答。
 
 **误差分析方向：** 不把 toy 结果外推为工业训练能力；保留每条 examples.jsonl 并改变语料/阈值/随机种子，观察为什么结论会改变。
+
+## v2.0 深度：任务级的可运行研究 MVP
+
+**完整算法链路：** 通过 BM25 构建可重建的本地检索器，对每个查询召回 top-k 文档并给出带 ID 的可核对抽取式回答；无证据时拒答。
+
+**读代码的顺序：** `data.py` 输入、切分、目标变量 → `model.py` 核心数学计算 → `project.py` 参数拟合/训练、验证和模型保存 → 项目推断逻辑按需从保存的 JSON 恢复统计状态 → `demo.py` CLI 包装。所有参数训练必须在当前章节显式可追踪。
+
+### 训练与独立进程恢复
+
+```bash
+python 13-rag-retrieval/demo.py --steps 30 --output-dir outputs/13-rag-retrieval
+python 13-rag-retrieval/demo.py --mode predict --output-dir outputs/13-rag-retrieval --input 'What does Transformer use?'
+python -m unittest discover -s tests -v
+```
+一个完备实验会生成 `metrics.json`、`examples.jsonl`、`run.log`、`history.jsonl` 与 checkpoint（`checkpoint.pt` 或 `checkpoint.json`）。神经模型只保存权重张量及构造配置，使用 PyTorch weights_only 加载；经典算法保存可审查 JSON 状态。
+### 评估与反例
+
+**本章独立验证的核心证据：** evidence_recall_at_2_with_abstention、检索分数、provenance 与引用一致性。
+
+**最值得做的消融实验：** 把查询替换成语料没有包含的事实，确认 evidence不足而非编造。
+
+**不要过度解读：** 本章不接外部生成 LLM；属于 extractive answer MVP，不冒称完整生成式 RAG。
+
+### 交互可视化与真实实验记录
+
+上方专属交互用于检查算法公式、张量流或模型机制；底部 Evidence Viewer 只能通过导入实际生成的 JSON/JSONL 显示指标、训练 loss 与预测样例。因此图上没有出现数据，不表示实验失败，而表示学习者尚未导入实验工件。
+### 进阶练习与验收
+
+1. 用自己的语言解释本章输入、标签或奖励的来源。哪些输出可以独立核验，哪些只能近似测量？
+2. 从训练/验证路径出发，列出三处潜在的信息泄漏来源，并指出代码中的防护点。
+3. 不重新训练，删除当前 Python 进程，再使用 checkpoint 恢复推理；比较相同输入的输出。
+4. 给出本章方法与之前一代模型的性能、假设或可解释性取舍；指出本章明确没有实现的论文内容。
