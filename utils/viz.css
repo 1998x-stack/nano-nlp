@@ -20,3 +20,11 @@
 .deep-note{font-size:13px;color:#5b7080;border-left:3px solid #0f766e;padding-left:12px;margin-bottom:0}
 .deep-result{font-size:21px;color:#0f766e;font-weight:750}
 @media(max-width:600px){.deep-sim{padding:15px}.deep-control{min-width:120px}.deep-bar{grid-template-columns:90px 1fr 60px}}
+
+.experiment-viewer{background:#f9fffd;border:1px solid #bddbd2;border-radius:16px;padding:24px;margin:24px 0}
+.experiment-viewer>h2{font-size:20px;margin:0}.experiment-viewer>p{line-height:1.7;color:#47635c}
+.experiment-viewer>label{display:block;margin:20px 0 5px;font-weight:700;font-size:14px}
+.experiment-viewer input[type=file]{margin-left:16px;max-width:80%;font-size:13px}
+.evidence-examples{color:#e6f3ef;background:#111827;border-radius:8px;font-size:12px;
+ max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:14px}
+.evidence-chart{background:white;border:1px solid #d4e5de;border-radius:8px;max-height:240px;width:100%}
