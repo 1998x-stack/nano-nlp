@@ -2,6 +2,7 @@
 import math
 import torch
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 from data import TEXT, BLOCK
 from model import TinyGPT, Config
 
@@ -20,7 +21,7 @@ def run(*,steps=30,seed=42,text_file=None):
     for t in range(steps):
         j=(t*9)%(len(train)-BLOCK-1)
         _,loss=model(train[j:j+BLOCK][None,:],train[j+1:j+BLOCK+1][None,:])
-        optimizer.zero_grad();loss.backward();optimizer.step()
+        optimizer.zero_grad();loss.backward();optimizer.step(); record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("GPT train step={} nll={:.4f}",t+1,loss.item())
     model.eval()
     with torch.no_grad():
@@ -34,8 +35,16 @@ def run(*,steps=30,seed=42,text_file=None):
             tokens.append(int(logits[0,-1].argmax()))
     text_out="".join(chars[t] for t in tokens)
     nll=sum(v_nll)/len(v_nll)
+    save_torch_state(model, {"chars": chars, "block_size": cfg.block_size, "n_embd": cfg.n_embd, "n_head": cfg.n_head})
+
     return {"task":"causal_language_model","parameters":sum(x.numel() for x in model.parameters()),
             "train_chars":len(train),"valid_chars":len(val),"vocab":len(chars),
             "val_nll":round(nll,5),"val_perplexity":round(math.exp(nll),5),
             "generated":text_out},[{"prompt":text_out[0],"generated":text_out[1:],
                                    "validation_chunk_nll":round(v,5)} for v in v_nll]
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

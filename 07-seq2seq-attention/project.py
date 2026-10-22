@@ -2,6 +2,7 @@
 import torch
 from torch.nn import functional as F
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 from data import TRAIN, VALID
 from model import TinyTranslator
 
@@ -30,7 +31,7 @@ def run(*,steps=30,seed=42,text_file=None):
     for t in range(steps):
         logits,_=model(src,tgt)
         loss=F.cross_entropy(logits.reshape(-1,7),tgt.reshape(-1))
-        optim.zero_grad();loss.backward();optim.step()
+        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("translation train step {} loss {:.4f}",t+1,loss.item())
     model.eval()
     with torch.no_grad():
@@ -42,5 +43,13 @@ def run(*,steps=30,seed=42,text_file=None):
     rows=[{"source":s,"target":g,"pred":p,
            "attention": [[round(float(v),4) for v in row] for row in weights]}
           for s,g,p,weights in zip(VALID,truth.tolist(),pred.tolist(),att.tolist())]
+    save_torch_state(model, {"vocab": 7, "dim": 24, "task": "toy_digit_translation"})
+
     return {"task":"sequence_translation","train_pairs":len(TRAIN),"valid_pairs":len(VALID),
             "val_token_accuracy":round(token_acc,5),"val_exact_match":round(seq_acc,5)},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

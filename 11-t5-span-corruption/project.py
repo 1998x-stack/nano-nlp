@@ -2,6 +2,7 @@
 import torch
 from torch.nn import functional as F
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 from data import TRAIN,VALID
 from model import TinyT5
 
@@ -26,7 +27,7 @@ def run(*,steps=30,seed=42,text_file=None):
     for t in range(steps):
         logits=model(src,decoder_input(target))
         loss=F.cross_entropy(logits.reshape(-1,10),target.reshape(-1))
-        optim.zero_grad();loss.backward();optim.step()
+        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("T5 train step={} loss={:.4f}",t+1,loss.item())
     valid_src=torch.tensor([a for a,b in VALID])
     valid_target=torch.tensor([b for a,b in VALID])
@@ -37,5 +38,13 @@ def run(*,steps=30,seed=42,text_file=None):
         seq_acc=(pred==valid_target).all(-1).float().mean().item()
     rows=[{"corrupted":s,"target":target,"generated":actual}
           for (s,target),actual in zip(VALID,pred.tolist())]
+    save_torch_state(model, {"vocab": 10, "dim": 32, "task": "span_corruption"})
+
     return {"task":"span_corruption","train_pairs":len(TRAIN),
             "val_token_accuracy":round(acc,5),"val_exact_match":round(seq_acc,5)},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

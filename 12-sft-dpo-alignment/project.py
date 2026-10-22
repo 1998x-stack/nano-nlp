@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 from data import TRAIN, VALID
 
 class PreferencePolicy(nn.Module):
@@ -28,7 +29,7 @@ def run(*,steps=30,seed=42,text_file=None):
     sft_steps=max(1,steps//2)
     for t in range(sft_steps):
         loss=F.nll_loss(policy(prompt),chosen)
-        optim.zero_grad();loss.backward();optim.step()
+        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
     reference=copy.deepcopy(policy).eval()
     for parameter in reference.parameters():
         parameter.requires_grad_(False)
@@ -42,7 +43,7 @@ def run(*,steps=30,seed=42,text_file=None):
             ref_margin=margin(reference,prompt,chosen,rejected)
         advantage=policy_margin-ref_margin
         loss=-F.logsigmoid(beta*advantage).mean()
-        optim.zero_grad();loss.backward();optim.step()
+        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
     q=torch.tensor([r[0] for r in VALID]);true=torch.tensor([r[1] for r in VALID])
     false=torch.tensor([r[2] for r in VALID])
     with torch.no_grad():
@@ -54,7 +55,16 @@ def run(*,steps=30,seed=42,text_file=None):
            "policy_rejected_logp":round(float(logp[i,r]),5),
            "reference_chosen_logp":round(float(refp[i,c]),5)}
           for i,(p,c,r) in enumerate(VALID)]
+    save_torch_state(policy, {"vocab": 2, "dim": 12, "beta": beta})
+    save_torch_state(reference, {"vocab": 2, "dim": 12}, filename="reference.pt")
+
     return {"task":"preference_optimization","sft_steps":sft_steps,"dpo_steps":max(1,steps-sft_steps),
             "reference_frozen":all(not p.requires_grad for p in reference.parameters()),
             "val_chosen_win_rate":preference_accuracy,
             "mean_log_margin_improvement":round(improvement,5)},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

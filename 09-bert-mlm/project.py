@@ -2,6 +2,7 @@
 import torch
 from torch.nn import functional as F
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 from data import TRAIN, VALID
 from model import TinyMLM
 
@@ -21,7 +22,7 @@ def run(*,steps=30,seed=42,text_file=None):
         inputs,mask=mask_at(batch,t%batch.size(1))
         logits=model(inputs)
         loss=F.cross_entropy(logits[mask],batch[mask])
-        optim.zero_grad();loss.backward();optim.step()
+        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("MLM train step={} masked_CE={:.5f}",t+1,loss.item())
     model.eval();rows=[];correct=total=0
     with torch.no_grad():
@@ -33,5 +34,13 @@ def run(*,steps=30,seed=42,text_file=None):
             correct+=int((pred==truth).sum());total+=len(truth)
             for seq,g,p in zip(inputs.tolist(),truth.tolist(),pred.tolist()):
                 rows.append({"masked_input":seq,"masked_position":position,"gold":g,"pred":p})
+    save_torch_state(model, {"vocab": 6, "max_length": 16, "mask_id": 0})
+
     return {"task":"masked_language_modeling","train_sequences":len(TRAIN),
             "valid_masked_tokens":total,"val_mask_accuracy":correct/total},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

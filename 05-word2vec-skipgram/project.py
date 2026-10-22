@@ -1,5 +1,6 @@
 """Skip-gram 完整小训练：正负样本、优化、验证 loss 和 cosine neighbors。"""
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 import torch
 from torch.nn import functional as F
 from data import TEXT, CONTEXT_WINDOW
@@ -31,7 +32,7 @@ def run(*,steps=30,seed=42,text_file=None):
         loss=network(train[:,0],train[:,1],neg)
         optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
+        optimizer.step(); record_step(loss=float(loss.item()))
         if step in (0,steps-1):
             logger.info("skipgram step={} loss={:.4f}",step+1,loss.item())
     with torch.no_grad():
@@ -47,6 +48,14 @@ def run(*,steps=30,seed=42,text_file=None):
             neighbors=[{"word":words[j],"cosine":round(float(v),4)}
                        for j,v in zip(indices.tolist(),values.tolist()) if j!=i]
             rows.append({"query":word,"nearest":neighbors})
+    save_torch_state(network, {"words": words, "dim": 16, "context_window": CONTEXT_WINDOW})
+
     return {"task":"embedding","vocabulary":len(words),"pairs_train":len(train),
             "pairs_valid":len(valid),"train_loss":round(float(loss.item()),5),
             "val_negative_sampling_loss":round(float(val_loss),5)},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

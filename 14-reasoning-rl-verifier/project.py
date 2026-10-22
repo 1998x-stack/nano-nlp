@@ -2,6 +2,7 @@
 import torch
 from torch.distributions import Categorical
 from loguru import logger
+from utils.v2io import save_torch_state, record_step
 from data import TRAIN,VALID
 from model import OpPolicy,verify
 
@@ -22,7 +23,7 @@ def run(*,steps=30,seed=42,text_file=None):
             losses.append(-(advantage.detach()*dist.log_prob(actions)).mean())
             mean_rewards.append(rewards.float().mean().item())
         loss=torch.stack(losses).mean()
-        optim.zero_grad();loss.backward();optim.step()
+        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
         rewards_history.append(sum(mean_rewards)/len(mean_rewards))
         if t in (0,steps-1):logger.info("RL iteration {} group reward={:.4f}",t+1,rewards_history[-1])
     probs=policy.logits.softmax(-1).detach()
@@ -35,6 +36,14 @@ def run(*,steps=30,seed=42,text_file=None):
                      "a":a,"b":b,"pred":prediction,"gold":gold,
                      "correct":bool(verify(op,a,b,prediction)),
                      "p_add":round(float(probs[op,0]),4)})
+    save_torch_state(policy, {"task": "toy_operator_policy", "group_size": group_size, "reward_history": rewards_history})
+
     return {"task":"verifiable_policy_optimization","train_tasks":len(TRAIN),
             "valid_tasks":len(VALID),"val_success_rate":sum(r["correct"] for r in rows)/len(rows),
             "last_group_reward":round(rewards_history[-1],5)},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)
