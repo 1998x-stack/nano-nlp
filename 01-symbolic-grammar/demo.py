@@ -1,38 +1,23 @@
-"""极小 CFG 递归下降解析：显式展示规则，不依赖 NLP 框架。"""
-GRAMMAR = {
-    "S": [("NP", "VP")],
-    "NP": [("Det", "N")],
-    "VP": [("V", "NP")],
-    "Det": [("the",), ("a",)],
-    "N": [("cat",), ("dog",)],
-    "V": [("sees",), ("likes",)],
-}
+"""v2 CLI：数据准备→模型→训练/评估→工件；保留 v1 教程 API 供测试。"""
+import sys
+from pathlib import Path
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+if str(HERE) not in sys.path: sys.path.insert(0, str(HERE))
+if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 
-def parse_symbol(symbol, tokens, pos):
-    """返回所有 (树, 下一个索引)，支持多个产生式。"""
-    if symbol not in GRAMMAR:  # 终结符：直接与输入匹配
-        return [(symbol, pos + 1)] if pos < len(tokens) and tokens[pos] == symbol else []
-    results = []
-    for production in GRAMMAR[symbol]:
-        states = [([], pos)]
-        for child in production:
-            next_states = []
-            for children, offset in states:
-                for tree, new_offset in parse_symbol(child, tokens, offset):
-                    next_states.append((children + [tree], new_offset))
-            states = next_states
-        for children, offset in states:
-            results.append(((symbol, children), offset))
-    return results
-
-def parse(sentence):
-    tokens = sentence.lower().split()
-    return [tree for tree, end in parse_symbol("S", tokens, 0) if end == len(tokens)]
+# 兼容 v1 原理测试，但不会在 import 时启动训练。
+if __name__ != "__main__":
+    import importlib.util
+    name = "_nanonlp_" + HERE.name.replace("-", "_")
+    spec = importlib.util.spec_from_file_location(name, HERE / "model.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    for key in ["GRAMMAR","parse"]:
+        globals()[key] = getattr(module, key)
 
 if __name__ == "__main__":
-    import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument("--sentence", default="the cat sees a dog")
-    args = p.parse_args()
-    trees = parse(args.sentence)
-    print("RESULT:", trees[0] if trees else "无法被当前文法解析")
+    import project
+    from utils.runtime import run_cli
+    run_cli(project, default_steps=1, default_output=str(ROOT / "outputs" / HERE.name))

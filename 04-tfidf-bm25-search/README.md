@@ -52,3 +52,17 @@ BM25 综合词频饱和、文档长度归一化和逆文档频率，代表了可
 **常见误区：** BM25 不理解同义改写或语义；但作为 Hybrid Search 的稀疏分支依然非常实用。
 
 **验收：** 运行结果包含 `RESULT:`；根目录运行 `python -m unittest discover -s tests -v`。
+
+## v2.0 · 完整 MVP 入口
+
+本章现已拆分为 `data.py`（训练/验证样本与边界）、`model.py`（核心算法）、`project.py`（任务训练/验证/推理）、`demo.py`（运行命令与 loguru）。输出包括 `metrics.json`、`examples.jsonl` 和 `run.log`，且**不在模块导入时执行训练**。
+
+```bash
+pip install -r requirements.txt
+python 04-tfidf-bm25-search/demo.py --steps 1 --output-dir outputs/04-tfidf-bm25-search
+cat outputs/04-tfidf-bm25-search/metrics.json
+```
+
+**独立验证的定义**：用固定查询的人工相关性标签计算 MRR 与 Recall@3，另输出分数最高的文档。
+
+**实验建议**：改变输入集、训练步数（统计方法修改数据而非增加无意义 epochs）、种子，并比较工件中每条结果，而不仅看一个标量。

@@ -52,3 +52,17 @@ CFG 将语法拆成可递归组合的非终结符；递归下降分析器遍历�
 **常见误区：** 规则不等于语义理解；文法覆盖率和歧义会随语言规模急剧增长。
 
 **验收：** 运行结果包含 `RESULT:`；根目录运行 `python -m unittest discover -s tests -v`。
+
+## v2.0 · 完整 MVP 入口
+
+本章现已拆分为 `data.py`（训练/验证样本与边界）、`model.py`（核心算法）、`project.py`（任务训练/验证/推理）、`demo.py`（运行命令与 loguru）。输出包括 `metrics.json`、`examples.jsonl` 和 `run.log`，且**不在模块导入时执行训练**。
+
+```bash
+pip install -r requirements.txt
+python 01-symbolic-grammar/demo.py --steps 1 --output-dir outputs/01-symbolic-grammar
+cat outputs/01-symbolic-grammar/metrics.json
+```
+
+**独立验证的定义**：人工标注的未见合法/非法句，模型返回完整语法树及接受与否。
+
+**实验建议**：改变输入集、训练步数（统计方法修改数据而非增加无意义 epochs）、种子，并比较工件中每条结果，而不仅看一个标量。

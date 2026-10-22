@@ -52,3 +52,17 @@ HMM 分离起始概率、状态转移概率和发射概率；Viterbi 动态规�
 **常见误区：** HMM 假设当前状态仅依赖前一状态、观测仅依赖当前状态；真实语言依赖常更复杂。
 
 **验收：** 运行结果包含 `RESULT:`；根目录运行 `python -m unittest discover -s tests -v`。
+
+## v2.0 · 完整 MVP 入口
+
+本章现已拆分为 `data.py`（训练/验证样本与边界）、`model.py`（核心算法）、`project.py`（任务训练/验证/推理）、`demo.py`（运行命令与 loguru）。输出包括 `metrics.json`、`examples.jsonl` 和 `run.log`，且**不在模块导入时执行训练**。
+
+```bash
+pip install -r requirements.txt
+python 03-hmm-viterbi/demo.py --steps 1 --output-dir outputs/03-hmm-viterbi
+cat outputs/03-hmm-viterbi/metrics.json
+```
+
+**独立验证的定义**：从已标注训练序列估计起始/转移/发射概率，在独立验证序列上计算 token accuracy 并返回 DP 网格。
+
+**实验建议**：改变输入集、训练步数（统计方法修改数据而非增加无意义 epochs）、种子，并比较工件中每条结果，而不仅看一个标量。

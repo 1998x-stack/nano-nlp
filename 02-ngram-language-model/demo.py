@@ -1,37 +1,23 @@
-"""最小 bigram 语言模型：计数、平滑、概率与预测一目了然。"""
-from collections import Counter, defaultdict
+"""v2 CLI：数据准备→模型→训练/评估→工件；保留 v1 教程 API 供测试。"""
+import sys
+from pathlib import Path
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+if str(HERE) not in sys.path: sys.path.insert(0, str(HERE))
+if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 
-CORPUS = [
-    "the cat likes fish",
-    "the dog likes fish",
-    "the cat likes milk",
-    "the dog eats fish",
-]
-
-class BigramLM:
-    def __init__(self):
-        self.counts = defaultdict(Counter)
-        self.vocab = {"<eos>"}
-
-    def fit(self, sentences):
-        for sentence in sentences:
-            words = sentence.lower().split() + ["<eos>"]
-            self.vocab.update(words)
-            for prev, word in zip(["<bos>"] + words[:-1], words):
-                self.counts[prev][word] += 1
-        return self
-
-    def probability(self, previous, next_word):
-        """Laplace 平滑：未观察到的搭配也不为 0。"""
-        row = self.counts[previous]
-        return (row[next_word] + 1) / (sum(row.values()) + len(self.vocab))
-
-    def predict(self, previous):
-        return sorted(
-            ((w, self.probability(previous, w)) for w in self.vocab),
-            key=lambda pair: (-pair[1], pair[0]),
-        )
+# 兼容 v1 原理测试，但不会在 import 时启动训练。
+if __name__ != "__main__":
+    import importlib.util
+    name = "_nanonlp_" + HERE.name.replace("-", "_")
+    spec = importlib.util.spec_from_file_location(name, HERE / "model.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    for key in ["BigramLM","CORPUS"]:
+        globals()[key] = getattr(module, key)
 
 if __name__ == "__main__":
-    lm = BigramLM().fit(CORPUS)
-    print("RESULT:", lm.predict("likes")[:3])
+    import project
+    from utils.runtime import run_cli
+    run_cli(project, default_steps=1, default_output=str(ROOT / "outputs" / HERE.name))

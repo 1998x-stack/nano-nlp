@@ -1,43 +1,23 @@
-"""BM25 from scratch：不使用 sklearn 或搜索引擎。"""
-import math
-import re
-from collections import Counter
+"""v2 CLI：数据准备→模型→训练/评估→工件；保留 v1 教程 API 供测试。"""
+import sys
+from pathlib import Path
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+if str(HERE) not in sys.path: sys.path.insert(0, str(HERE))
+if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 
-DOCS = [
-    "transformer uses attention to model language",
-    "bm25 retrieves documents using term frequency",
-    "attention helps a language model focus on tokens",
-]
-
-def tokenize(text):
-    return re.findall(r"[a-z]+", text.lower())
-
-class BM25:
-    def __init__(self, documents, k1=1.5, b=0.75):
-        self.documents = documents
-        self.terms = [Counter(tokenize(d)) for d in documents]
-        self.k1, self.b = k1, b
-        self.avgdl = sum(map(lambda x: sum(x.values()), self.terms)) / len(documents)
-        self.df = Counter(w for tf in self.terms for w in tf)
-
-    def score(self, query, index):
-        tf = self.terms[index]
-        dl = sum(tf.values())
-        K = self.k1 * (1 - self.b + self.b * dl / self.avgdl)
-        result = 0.0
-        for word in set(tokenize(query)):
-            freq = tf[word]
-            if not freq:
-                continue
-            # 用平滑 IDF 避免稀有词产生负权重。
-            idf = math.log(1 + (len(self.terms) - self.df[word] + 0.5) / (self.df[word] + 0.5))
-            result += idf * freq * (self.k1 + 1) / (freq + K)
-        return result
-
-    def search(self, query):
-        return sorted(range(len(self.documents)), key=lambda i: self.score(query, i), reverse=True)
+# 兼容 v1 原理测试，但不会在 import 时启动训练。
+if __name__ != "__main__":
+    import importlib.util
+    name = "_nanonlp_" + HERE.name.replace("-", "_")
+    spec = importlib.util.spec_from_file_location(name, HERE / "model.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    for key in ["BM25","DOCS"]:
+        globals()[key] = getattr(module, key)
 
 if __name__ == "__main__":
-    engine = BM25(DOCS)
-    print("RESULT:", [(i, round(engine.score("attention language", i), 3))
-                      for i in engine.search("attention language")])
+    import project
+    from utils.runtime import run_cli
+    run_cli(project, default_steps=1, default_output=str(ROOT / "outputs" / HERE.name))
