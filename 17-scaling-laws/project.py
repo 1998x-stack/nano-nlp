@@ -11,8 +11,15 @@ def optimal(budget):
     return min(candidates,key=lambda x:x[0]),len(candidates)
 
 def run(*,steps=1,seed=42,text_file=None):
+    budgets=BUDGETS
+    if text_file:
+        from utils.data import read_jsonl
+        rows=read_jsonl(text_file)
+        if not all(isinstance(row.get("budget"),int) and row["budget"]>0 for row in rows):
+            raise ValueError("Scaling JSONL 每行需要正整数 budget")
+        budgets=sorted(set(row["budget"] for row in rows))
     rows=[]
-    for budget in BUDGETS:
+    for budget in budgets:
         (loss,n,d),num=optimal(budget)
         assert n*d<=budget
         rows.append({"budget":budget,"params_units":n,"tokens_units":d,
@@ -22,7 +29,7 @@ def run(*,steps=1,seed=42,text_file=None):
     # 实验性规律：扩大预算不应使“最优”损失变差。
     assert all(rows[i]["estimated_loss"]<=rows[i-1]["estimated_loss"]+1e-6
                for i in range(1,len(rows)))
-    save_json_state({"budgets": BUDGETS, "params": PARAMS, "tokens": TOKENS,
+    save_json_state({"budgets": budgets, "params": PARAMS, "tokens": TOKENS,
                      "scenario": "synthetic_coefficients_NOT_empirical"})
 
     return {"task":"compute_allocation","scenario":"synthetic_coefficients_NOT_empirical",

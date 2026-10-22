@@ -11,7 +11,19 @@ def jaccard(left,right):
 
 def run(*,steps=1,seed=42,text_file=None):
     # 高质量代表先进入候选簇，防止随机输入顺序保留较差版本。
-    ordered=sorted(RAW,key=lambda d:(-d["quality"],d["id"]))
+    docs=RAW
+    if text_file:
+        from utils.data import read_jsonl
+        docs=read_jsonl(text_file)
+        ids=[r.get("id") for r in docs]
+        if not ids or len(ids)!=len(set(ids)):
+            raise ValueError("去重数据必须包含不重复的 document.id")
+        if not all(isinstance(r.get("text"),str) and
+                   isinstance(r.get("source"),str) and
+                   isinstance(r.get("quality"),(float,int))
+                   and 0<=r["quality"]<=1 for r in docs):
+            raise ValueError("记录须包含 text/source:string, quality∈[0,1]")
+    ordered=sorted(docs,key=lambda d:(-d["quality"],d["id"]))
     signatures={}
     seen_exact={}
     kept=[]
@@ -44,9 +56,9 @@ def run(*,steps=1,seed=42,text_file=None):
         logger.debug("doc={} status={} representative={}",doc["id"],reason,rep)
     save_json_state({"retained": kept, "decision_log": rows, "jaccard_threshold": 0.70})
 
-    return {"task":"text_curation","raw_docs":len(RAW),"kept_docs":len(kept),
-            "removed_docs":len(RAW)-len(kept),
-            "dedup_retention_rate":round(len(kept)/len(RAW),5),
+    return {"task":"text_curation","raw_docs":len(docs),"kept_docs":len(kept),
+            "removed_docs":len(docs)-len(kept),
+            "dedup_retention_rate":round(len(kept)/len(docs),5),
             "retained_ids":[doc["id"] for doc in kept]},rows
 
 

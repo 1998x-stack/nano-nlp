@@ -52,11 +52,23 @@ class FittedHMM:
         return list(reversed(path)),grid
 
 def run(*, steps=1, seed=42, text_file=None):
-    hmm=FittedHMM().fit(TRAIN)
-    logger.info("fit HMM | states={} vocab={} labeled_sequences={}",hmm.states,len(hmm.vocab),len(TRAIN))
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        data=read_jsonl(text_file)
+        if len(data)<4 or not all(isinstance(r.get("tokens"),list) and
+                 isinstance(r.get("tags"),list) and len(r["tokens"])==len(r["tags"])>0
+                 and all(isinstance(x,str) for x in r["tokens"]+r["tags"])
+                 for r in data):
+            raise ValueError("HMM JSONL 至少 4 条 tokens:string[] / tags:string[] 同长非空")
+        tr,va=nonoverlap_split(data)
+        train=[(r["tokens"],r["tags"]) for r in tr]
+        valid=[(r["tokens"],r["tags"]) for r in va]
+    hmm=FittedHMM().fit(train)
+    logger.info("fit HMM | states={} vocab={} labeled_sequences={}",hmm.states,len(hmm.vocab),len(train))
     rows=[]
     total=correct=0
-    for words,tags in VALID:
+    for words,tags in valid:
         pred,grid=hmm.predict(words)
         total+=len(tags);correct+=sum(a==b for a,b in zip(tags,pred))
         rows.append({"tokens":words,"gold":tags,"pred":pred,

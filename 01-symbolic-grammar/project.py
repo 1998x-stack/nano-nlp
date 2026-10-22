@@ -5,13 +5,23 @@ from data import TRAIN, VALID
 from model import GRAMMAR, parse
 
 def run(*, steps=1, seed=42, text_file=None):
-    logger.info("grammar rules={} | train={} | valid={}",len(GRAMMAR),len(TRAIN),len(VALID))
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        data=read_jsonl(text_file)
+        if len(data)<4 or not all(isinstance(r.get("sentence"),str) and
+             isinstance(r.get("accepted"),bool) for r in data):
+            raise ValueError("CFG JSONL 至少 4 条，字段为 sentence:string, accepted:boolean")
+        left,right=nonoverlap_split(data)
+        train=[(r["sentence"],r["accepted"]) for r in left]
+        valid=[(r["sentence"],r["accepted"]) for r in right]
+    logger.info("grammar rules={} | train={} | valid={}",len(GRAMMAR),len(train),len(valid))
     # 符号文法不进行梯度学习：fit 即指定产生式/词典的显式知识。
     grammar_vocabulary = sorted({token for productions in GRAMMAR.values()
                                  for production in productions for token in production
                                  if token not in GRAMMAR})
     examples = []
-    for sentence, truth in VALID:
+    for sentence, truth in valid:
         trees = parse(sentence)
         pred = bool(trees)
         logger.debug("{} | gold={} predicted={} parses={}",sentence,truth,pred,len(trees))
@@ -19,7 +29,7 @@ def run(*, steps=1, seed=42, text_file=None):
                          "tree":trees[0] if trees else None})
     accuracy = sum(r["gold"] == r["pred"] for r in examples) / len(examples)
     metrics = {"task":"grammar_acceptability","val_accuracy":accuracy,
-               "valid_samples":len(VALID),"rules":sum(map(len,GRAMMAR.values())),
+               "valid_samples":len(valid),"rules":sum(map(len,GRAMMAR.values())),
                "vocabulary_size":len(grammar_vocabulary)}
     save_json_state({"grammar": GRAMMAR, "vocabulary": grammar_vocabulary})
 
