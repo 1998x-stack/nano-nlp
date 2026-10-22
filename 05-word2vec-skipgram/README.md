@@ -66,3 +66,38 @@ cat outputs/05-word2vec-skipgram/metrics.json
 **独立验证的定义**：使用与训练词对不同的验证词对计算 negative-sampling loss，并提取词向量 cosine 近邻。
 
 **实验建议**：改变输入集、训练步数（统计方法修改数据而非增加无意义 epochs）、种子，并比较工件中每条结果，而不仅看一个标量。
+
+## v2.0 深度：完整任务与代码执行路径
+
+**问题与模型：** 训练两张 token embedding；最大化正上下文的 σ(v·u) 并使负样本内积减小。
+
+**逐个模块阅读：** `data.py` 提供训练/验证任务，`model.py` 描述算法核心，`project.py` 调用训练或统计拟合、计算验证指标并保存工件，`inference.py`（神经章节）实现权重恢复预测；经典章节的恢复方法直接定义在 `project.py`。`demo.py` 只是统一 CLI，避免隐藏算法。
+
+### 运行、保存、重新打开模型
+
+```bash
+python 05-word2vec-skipgram/demo.py --steps 30 --output-dir outputs/05-word2vec-skipgram
+python 05-word2vec-skipgram/demo.py --mode predict --output-dir outputs/05-word2vec-skipgram --input 'cat'
+python -m unittest discover -s tests -v
+```
+训练、验证与推理不必处于同一进程。工件目录中包含：`metrics.json`（带 seed 和配置的评估报告）、`examples.jsonl`（逐样本预测）、`run.log`（loguru 日志）、`history.jsonl`（真实优化步骤；统计规则项目可为空）、`checkpoint.json / checkpoint.pt`（仅保存可恢复统计状态或参数张量）。
+### 如何衡量这章是不是真的在工作
+
+**可量化输出：** val_negative_sampling_loss、cosine 近邻、不包含自身的 top-k 列表。
+
+**关键正确性断言：** 保存词表与 center/context 两张表后，在独立进程查询同一词。
+
+**建议的对照实验：** 扩大上下文窗口，对正例数量和近邻关系做消融；比较随机种子。
+
+**能力边界：** 负采样仅为局部分类目标，本课程均匀采负样本，不等价论文中的 unigram^0.75。
+
+### HTML 的使用方式
+
+先操作当前页面的专属计算流程与参数实验，再运行上方命令。在页面下方 **真实训练 / 评估结果** 面板选择输出目录中的三个实验文件。专属组件是数学演示，导入组件则只显示实际运行产生的指标、损失与预测；二者不能混为一谈。
+
+### 面试自测
+
+1. 这个模型在该阶段解决了什么具体瓶颈？它借助了哪些条件独立性、优化目标或结构约束？
+2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
+3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
+4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？

@@ -63,3 +63,38 @@ cat outputs/08-transformer-attention/metrics.json
 **本章实际可验收任务：** 使用 causal multi-head attention 在 toy 分类上训练/验证，并保存末位置 attention 权重。
 
 **研究边界：** 数据集刻意很小，验证指标说明管线完整，不证明真实任务泛化。保留原始论文链接，区别本例与论文的完整训练配方。
+
+## v2.0 深度：完整任务与代码执行路径
+
+**问题与模型：** Q、K、V 投影后分别重排为 [B,H,T,D]，以 1/√D 缩放并掩盖未来 token；末尾 token 汇聚全序列做分类。
+
+**逐个模块阅读：** `data.py` 提供训练/验证任务，`model.py` 描述算法核心，`project.py` 调用训练或统计拟合、计算验证指标并保存工件，`inference.py`（神经章节）实现权重恢复预测；经典章节的恢复方法直接定义在 `project.py`。`demo.py` 只是统一 CLI，避免隐藏算法。
+
+### 运行、保存、重新打开模型
+
+```bash
+python 08-transformer-attention/demo.py --steps 30 --output-dir outputs/08-transformer-attention
+python 08-transformer-attention/demo.py --mode predict --output-dir outputs/08-transformer-attention --input '1,2,3,0'
+python -m unittest discover -s tests -v
+```
+训练、验证与推理不必处于同一进程。工件目录中包含：`metrics.json`（带 seed 和配置的评估报告）、`examples.jsonl`（逐样本预测）、`run.log`（loguru 日志）、`history.jsonl`（真实优化步骤；统计规则项目可为空）、`checkpoint.json / checkpoint.pt`（仅保存可恢复统计状态或参数张量）。
+### 如何衡量这章是不是真的在工作
+
+**可量化输出：** val_accuracy、注意力矩阵形状、右上角未来位置严格为 0。
+
+**关键正确性断言：** 推理导出每个 head 的概率权重，可借助 HTML 查看下三角可见性。
+
+**建议的对照实验：** 改变未来位置的 embedding，验证前面 token 的注意力输出保持不变，作为因果不泄漏测试。
+
+**能力边界：** 这个项目聚焦 attention 算子，不等于完整的可训练 Decoder Transformer；完整 GPT 见第 10 章。
+
+### HTML 的使用方式
+
+先操作当前页面的专属计算流程与参数实验，再运行上方命令。在页面下方 **真实训练 / 评估结果** 面板选择输出目录中的三个实验文件。专属组件是数学演示，导入组件则只显示实际运行产生的指标、损失与预测；二者不能混为一谈。
+
+### 面试自测
+
+1. 这个模型在该阶段解决了什么具体瓶颈？它借助了哪些条件独立性、优化目标或结构约束？
+2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
+3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
+4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？

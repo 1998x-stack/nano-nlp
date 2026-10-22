@@ -66,3 +66,38 @@ cat outputs/04-tfidf-bm25-search/metrics.json
 **独立验证的定义**：用固定查询的人工相关性标签计算 MRR 与 Recall@3，另输出分数最高的文档。
 
 **实验建议**：改变输入集、训练步数（统计方法修改数据而非增加无意义 epochs）、种子，并比较工件中每条结果，而不仅看一个标量。
+
+## v2.0 深度：完整任务与代码执行路径
+
+**问题与模型：** 构建文档词频和文档频率，按查询计算 IDF、词频饱和及长度校正；对返回的 top-k 保留原始文档 ID。
+
+**逐个模块阅读：** `data.py` 提供训练/验证任务，`model.py` 描述算法核心，`project.py` 调用训练或统计拟合、计算验证指标并保存工件，`inference.py`（神经章节）实现权重恢复预测；经典章节的恢复方法直接定义在 `project.py`。`demo.py` 只是统一 CLI，避免隐藏算法。
+
+### 运行、保存、重新打开模型
+
+```bash
+python 04-tfidf-bm25-search/demo.py --steps 30 --output-dir outputs/04-tfidf-bm25-search
+python 04-tfidf-bm25-search/demo.py --mode predict --output-dir outputs/04-tfidf-bm25-search --input 'attention language'
+python -m unittest discover -s tests -v
+```
+训练、验证与推理不必处于同一进程。工件目录中包含：`metrics.json`（带 seed 和配置的评估报告）、`examples.jsonl`（逐样本预测）、`run.log`（loguru 日志）、`history.jsonl`（真实优化步骤；统计规则项目可为空）、`checkpoint.json / checkpoint.pt`（仅保存可恢复统计状态或参数张量）。
+### 如何衡量这章是不是真的在工作
+
+**可量化输出：** MRR、Recall@3、query 对每篇文档的 BM25 score。
+
+**关键正确性断言：** 从 checkpoint.json 恢复文档并重建索引后应获得同样排序。
+
+**建议的对照实验：** 改变 b∈[0,1]、k1 的大小观察长文和高词频文档的相对次序。
+
+**能力边界：** BM25 无法依赖语义推断同义词，而且极短语料的 IDF 只是机制演示。
+
+### HTML 的使用方式
+
+先操作当前页面的专属计算流程与参数实验，再运行上方命令。在页面下方 **真实训练 / 评估结果** 面板选择输出目录中的三个实验文件。专属组件是数学演示，导入组件则只显示实际运行产生的指标、损失与预测；二者不能混为一谈。
+
+### 面试自测
+
+1. 这个模型在该阶段解决了什么具体瓶颈？它借助了哪些条件独立性、优化目标或结构约束？
+2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
+3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
+4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？

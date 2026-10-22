@@ -62,3 +62,38 @@ cat outputs/07-seq2seq-attention/metrics.json
 **本章实际可验收任务：** 词级 Encoder–Decoder 小翻译；Teacher Forcing 训练，但评估时必须自回归解码；输出逐词注意力。
 
 **研究边界：** 数据集刻意很小，验证指标说明管线完整，不证明真实任务泛化。保留原始论文链接，区别本例与论文的完整训练配方。
+
+## v2.0 深度：完整任务与代码执行路径
+
+**问题与模型：** 编码器保留每个 source 位置的表示；解码器每步由 query·memory 得到对齐权重，再利用真实 target 做 teacher forcing。
+
+**逐个模块阅读：** `data.py` 提供训练/验证任务，`model.py` 描述算法核心，`project.py` 调用训练或统计拟合、计算验证指标并保存工件，`inference.py`（神经章节）实现权重恢复预测；经典章节的恢复方法直接定义在 `project.py`。`demo.py` 只是统一 CLI，避免隐藏算法。
+
+### 运行、保存、重新打开模型
+
+```bash
+python 07-seq2seq-attention/demo.py --steps 30 --output-dir outputs/07-seq2seq-attention
+python 07-seq2seq-attention/demo.py --mode predict --output-dir outputs/07-seq2seq-attention --input '1,2,3'
+python -m unittest discover -s tests -v
+```
+训练、验证与推理不必处于同一进程。工件目录中包含：`metrics.json`（带 seed 和配置的评估报告）、`examples.jsonl`（逐样本预测）、`run.log`（loguru 日志）、`history.jsonl`（真实优化步骤；统计规则项目可为空）、`checkpoint.json / checkpoint.pt`（仅保存可恢复统计状态或参数张量）。
+### 如何衡量这章是不是真的在工作
+
+**可量化输出：** val_token_accuracy、val_exact_match、生成序列以及每步 source attention。
+
+**关键正确性断言：** 推理阶段禁止使用真实 target；必须每一步喂回模型自己刚预测的 token。
+
+**建议的对照实验：** 将源序列顺序打乱，对照 attention 权重和预测，确认当前解码步使用了源端不同信息。
+
+**能力边界：** 示例是数字 token 玩具翻译、点积 cross attention，不是论文中的 additive attention。
+
+### HTML 的使用方式
+
+先操作当前页面的专属计算流程与参数实验，再运行上方命令。在页面下方 **真实训练 / 评估结果** 面板选择输出目录中的三个实验文件。专属组件是数学演示，导入组件则只显示实际运行产生的指标、损失与预测；二者不能混为一谈。
+
+### 面试自测
+
+1. 这个模型在该阶段解决了什么具体瓶颈？它借助了哪些条件独立性、优化目标或结构约束？
+2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
+3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
+4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？
