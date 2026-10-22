@@ -30,6 +30,12 @@ class RestoreTests(unittest.TestCase):
                 self.assertTrue((Path(directory)/"history.jsonl").is_file())
                 metrics = json.loads((Path(directory)/"metrics.json").read_text(encoding="utf-8"))
                 self.assertIn("task",metrics["metrics"])
+                # v3 工件不仅要存在，还要与训练时保存的 SHA-256 对应。
+                from utils.provenance import verify_manifest
+                run_manifest = verify_manifest(directory)
+                self.assertEqual(run_manifest["chapter"], chapter.name)
+                self.assertEqual(run_manifest["task"], metrics["metrics"]["task"])
+                self.assertEqual(run_manifest["source"]["kind"], "builtin_toy")
                 predict = subprocess.run(exe+["--mode","predict","--output-dir",directory],
                                          capture_output=True,text=True,cwd=ROOT,timeout=120)
                 self.assertEqual(predict.returncode,0,predict.stderr)
