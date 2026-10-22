@@ -1,0 +1,6 @@
+{"tokens":["dogs","run"],"tags":["N","V"]}
+{"tokens":["run","dogs"],"tags":["V","N"]}
+{"tokens":["dogs","dogs"],"tags":["N","N"]}
+{"tokens":["run","run"],"tags":["V","V"]}
+{"tokens":["dogs","run","dogs"],"tags":["N","V","N"]}
+{"tokens":["run","dogs","run"],"tags":["V","N","V"]}

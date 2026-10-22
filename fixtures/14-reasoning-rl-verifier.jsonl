@@ -1,0 +1,6 @@
+{"operation":"add","a":3,"b":4}
+{"operation":"multiply","a":3,"b":4}
+{"operation":"add","a":2,"b":5}
+{"operation":"multiply","a":4,"b":5}
+{"operation":"add","a":7,"b":8}
+{"operation":"multiply","a":9,"b":3}

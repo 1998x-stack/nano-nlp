@@ -1,0 +1,6 @@
+{"type":"document","id":"D1","text":"Transformer uses multihead self attention."}
+{"type":"document","id":"D2","text":"BERT predicts masked language tokens."}
+{"type":"document","id":"D3","text":"GPT predicts the next token with a causal mask."}
+{"type":"query","question":"which uses self attention","evidence":["D1"]}
+{"type":"query","question":"which predicts masked tokens","evidence":["D2"]}
+{"type":"query","question":"what is the weather tomorrow","evidence":[]}
