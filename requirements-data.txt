@@ -1,0 +1,2 @@
+# Optional, only needed for scripts/prepare_data.py
+datasets>=2.18,<5

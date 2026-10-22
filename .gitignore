@@ -9,3 +9,7 @@ checkpoints/
 *.pth
 *.bin
 .DS_Store
+
+# Exclude downloaded Hugging Face data/caches.
+data/**
+!data/.gitkeep

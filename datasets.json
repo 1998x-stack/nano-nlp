@@ -1,0 +1,139 @@
+{
+  "01-symbolic-grammar": {
+    "repo": "nyu-mll/glue",
+    "config": "cola",
+    "split": "train",
+    "field": "sentence",
+    "license": "GLUE: other",
+    "url": "https://huggingface.co/datasets/nyu-mll/glue"
+  },
+  "02-ngram-language-model": {
+    "repo": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "split": "train",
+    "field": "text",
+    "license": "CC BY-SA 3.0 / GFDL",
+    "url": "https://huggingface.co/datasets/Salesforce/wikitext"
+  },
+  "03-hmm-viterbi": {
+    "repo": "eriktks/conll2003",
+    "config": null,
+    "split": "train",
+    "field": "tokens",
+    "license": "other; legacy script-based",
+    "manual": true,
+    "url": "https://huggingface.co/datasets/eriktks/conll2003"
+  },
+  "04-tfidf-bm25-search": {
+    "repo": "rajpurkar/squad",
+    "config": null,
+    "split": "train",
+    "field": "context",
+    "license": "CC BY-SA 4.0",
+    "url": "https://huggingface.co/datasets/rajpurkar/squad"
+  },
+  "05-word2vec-skipgram": {
+    "repo": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "split": "train",
+    "field": "text",
+    "license": "CC BY-SA 3.0 / GFDL",
+    "url": "https://huggingface.co/datasets/Salesforce/wikitext"
+  },
+  "06-rnn-lstm": {
+    "repo": "karpathy/tiny_shakespeare",
+    "config": null,
+    "split": "train",
+    "field": "text",
+    "license": "check source/card",
+    "url": "https://huggingface.co/datasets/karpathy/tiny_shakespeare"
+  },
+  "07-seq2seq-attention": {
+    "repo": "Helsinki-NLP/opus_books",
+    "config": "en-fr",
+    "split": "train",
+    "field": "translation",
+    "license": "other; check original books",
+    "url": "https://huggingface.co/datasets/Helsinki-NLP/opus_books"
+  },
+  "08-transformer-attention": {
+    "repo": "karpathy/tiny_shakespeare",
+    "config": null,
+    "split": "train",
+    "field": "text",
+    "license": "check source/card",
+    "url": "https://huggingface.co/datasets/karpathy/tiny_shakespeare"
+  },
+  "09-bert-mlm": {
+    "repo": "stanfordnlp/sst2",
+    "config": null,
+    "split": "train",
+    "field": "sentence",
+    "license": "unknown",
+    "url": "https://huggingface.co/datasets/stanfordnlp/sst2"
+  },
+  "10-gpt-causal-lm": {
+    "repo": "karpathy/tiny_shakespeare",
+    "config": null,
+    "split": "train",
+    "field": "text",
+    "license": "check source/card",
+    "url": "https://huggingface.co/datasets/karpathy/tiny_shakespeare"
+  },
+  "11-t5-span-corruption": {
+    "repo": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "split": "train",
+    "field": "text",
+    "license": "CC BY-SA 3.0 / GFDL",
+    "url": "https://huggingface.co/datasets/Salesforce/wikitext"
+  },
+  "12-sft-dpo-alignment": {
+    "repo": "tatsu-lab/alpaca",
+    "config": null,
+    "split": "train",
+    "field": "instruction",
+    "license": "CC BY-NC 4.0",
+    "url": "https://huggingface.co/datasets/tatsu-lab/alpaca"
+  },
+  "13-rag-retrieval": {
+    "repo": "rajpurkar/squad",
+    "config": null,
+    "split": "train",
+    "field": "context",
+    "license": "CC BY-SA 4.0",
+    "url": "https://huggingface.co/datasets/rajpurkar/squad"
+  },
+  "14-reasoning-rl-verifier": {
+    "repo": "openai/gsm8k",
+    "config": "main",
+    "split": "train",
+    "field": "question",
+    "license": "MIT",
+    "url": "https://huggingface.co/datasets/openai/gsm8k"
+  },
+  "15-data-cleaning-minhash": {
+    "repo": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "split": "train",
+    "field": "text",
+    "license": "CC BY-SA 3.0 / GFDL",
+    "url": "https://huggingface.co/datasets/Salesforce/wikitext"
+  },
+  "16-lora-finetuning": {
+    "repo": "stanfordnlp/sst2",
+    "config": null,
+    "split": "train",
+    "field": "sentence",
+    "license": "unknown",
+    "url": "https://huggingface.co/datasets/stanfordnlp/sst2"
+  },
+  "17-scaling-laws": {
+    "repo": "Salesforce/wikitext",
+    "config": "wikitext-2-raw-v1",
+    "split": "train",
+    "field": "text",
+    "license": "CC BY-SA 3.0 / GFDL",
+    "url": "https://huggingface.co/datasets/Salesforce/wikitext"
+  }
+}

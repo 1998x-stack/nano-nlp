@@ -1,0 +1,42 @@
+# AGENTS.md — nano-nlp 课程开发规则
+
+## 项目目标
+- 像 nanoGPT 一样可读、可改、可运行；不要为了“架构整洁”把一个算法拆成十层封装。
+- 每章只讲 **一项最重要的历史突破**，必要时保留简化假设并在 README 明说。
+- 从 README → 可视化 index.html → demo.py → tests，形成可以自查的学习闭环。
+
+## 结构约束
+- 阶段目录必须采用两位数递增的 01-xxx-xxx 命名。
+- 每章必须有 README.md、index.html、demo.py。
+- 第三方论文只保留官方页面/PDF URL，不直接复制受限制的全文到仓库。
+- 共享稳定数学工具放 utils/，不把所有算法抽象为庞大基类。
+
+## Python 风格
+- Python >=3.10；stdlib 优先，神经模型允许依赖 torch。
+- 一章默认一个 demo.py；入口放在 if __name__ == "__main__"。
+- 代码结构为 Data → Model/Algorithm → Loss/Decode → main；不要隐藏核心数学。
+- 核心代码必须有解释“为什么”的中文注释（非每行翻译），尤其注释张量形状、mask、归一化和目标函数。
+- 默认 toy 数据、CPU 可运行、随机种子固定，不能依赖 API key 或联网。
+- 若算法只是教学近似（例如简化 GRPO、MLM 或 T5），必须在 README 标注不等价之处。
+- 实验输出用 "RESULT:" 标记，方便自动化 smoke test。
+- 数据加载和外部下载应独立于模型训练过程；不自动执行远程数据集脚本。
+
+## HTML 风格
+- 优先可交互的因果链、计算节点、参数微实验；避免截图式架构图。
+- 禁止第三方 CDN 依赖，浏览器可以直接打开 index.html。
+- 每个可视化步骤对应 Python 搜索锚点；支持鼠标点击与键盘左右方向键。
+- 复用 utils/viz.js 和 utils/viz.css；可为单章再增加专有图形。
+- 颜色/布局保证小屏可读、对比足够、交互有文字反馈。
+
+## 数据与版权
+- 使用 datasets.json 保存确切 Hugging Face repo、config、split、field、license。
+- 不把大型训练数据、密钥、缓存或大模型权重提交到 Git。
+- 不默认传入不可信远程代码选项；遇到老版 dataset script 需要人工安全导出。
+- 每章引用一篇经典论文，保留原始 URL，注明跨版本差异与简化范围。
+- 若数据集有 non-commercial 等限制，应直接说明，不默认允许商用。
+
+## PR 完成条件
+- python -m unittest discover -s tests -v
+- 核心公式和代码符合形状/因果掩码/标签边界约束。
+- 无网络默认路径可运行；查看 GitHub Actions 通过后再合并。
+- 不能以 toy loss 替代真实性能评估。
