@@ -5,6 +5,10 @@ from data import TRAIN, VALID
 from model import GRAMMAR, parse
 
 def run(*, steps=1, seed=42, text_file=None):
+    """CFG 是显式规则而非梯度训练；评价必须使用独立标注的可接受句。
+
+    核心不变量：接受的条件为 parse_symbol 消耗全部 token，歧义时可返回多棵树。
+    """
     train,valid=TRAIN,VALID
     if text_file:
         from utils.data import read_jsonl,nonoverlap_split

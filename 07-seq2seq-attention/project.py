@@ -24,7 +24,12 @@ def greedy_decode(model,src,length=3):
     return torch.cat(predicted,dim=1),torch.cat(attentions,dim=1)
 
 def run(*,steps=30,seed=42,text_file=None):
-    torch.manual_seed(seed);torch.set_num_threads(1)
+    """训练时 teacher forcing，验证解码时只输入之前生成的 token。
+
+    核心不变量：Encoder memory[B,S,D]；每一步 attention[B,1,S] 归一化为概率。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
     train_pairs=[(x,[t+3 for t in x]) for x in TRAIN]
     valid_pairs=[(x,[t+3 for t in x]) for x in VALID]
     if text_file:
@@ -38,13 +43,17 @@ def run(*,steps=30,seed=42,text_file=None):
         a,b=nonoverlap_split(rows)
         train_pairs=[(r["source"],r["target"]) for r in a]
         valid_pairs=[(r["source"],r["target"]) for r in b]
-    src=torch.tensor([a for a,b in train_pairs]);tgt=torch.tensor([b for a,b in train_pairs])
+    src=torch.tensor([a for a,b in train_pairs])
+    tgt=torch.tensor([b for a,b in train_pairs])
     model=TinyTranslator()
     optim=torch.optim.AdamW(model.parameters(),lr=.025)
     for t in range(steps):
         logits,_=model(src,tgt)
         loss=F.cross_entropy(logits.reshape(-1,7),tgt.reshape(-1))
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("translation train step {} loss {:.4f}",t+1,loss.item())
     model.eval()
     with torch.no_grad():

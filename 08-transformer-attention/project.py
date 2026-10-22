@@ -25,7 +25,12 @@ class AttentionClassifier(nn.Module):
         return logits,weights
 
 def run(*,steps=30,seed=42,text_file=None):
-    torch.manual_seed(seed);torch.set_num_threads(1)
+    """自注意力采用因果 mask；序列最后 token 用于监督分类。
+
+    核心不变量：每个 head 的权重在最后一维求和为 1，未来位置应严格为 0。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
     train,valid=TRAIN,VALID
     if text_file:
         from utils.data import read_jsonl,nonoverlap_split
@@ -37,14 +42,20 @@ def run(*,steps=30,seed=42,text_file=None):
         a,b=nonoverlap_split(rows)
         train=[(r["tokens"],r["label"]) for r in a]
         valid=[(r["tokens"],r["label"]) for r in b]
-    x=torch.tensor([a for a,b in train]);y=torch.tensor([b for a,b in train])
-    model=AttentionClassifier();optim=torch.optim.AdamW(model.parameters(),lr=.035)
+    x=torch.tensor([a for a,b in train])
+    y=torch.tensor([b for a,b in train])
+    model=AttentionClassifier()
+    optim=torch.optim.AdamW(model.parameters(),lr=.035)
     for t in range(steps):
         logits,_=model(x)
         loss=F.cross_entropy(logits,y)
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
         if t in (0,steps-1):logger.info("attention class step={} loss={:.4f}",t+1,loss.item())
-    valid_x=torch.tensor([a for a,b in valid]);truth=torch.tensor([b for a,b in valid])
+    valid_x=torch.tensor([a for a,b in valid])
+    truth=torch.tensor([b for a,b in valid])
     model.eval()
     with torch.no_grad():
         logits,weights=model(valid_x)

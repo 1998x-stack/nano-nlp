@@ -17,6 +17,10 @@ def generate(lm, start="the", max_tokens=8):
     return " ".join(result)
 
 def run(*, steps=1, seed=42, text_file=None):
+    """以统计频数拟合 P(next|previous)，只在保留集计算 NLL/PPL。
+
+    核心不变量：加一平滑的分母是该历史词的总转移次数加整个输出词表大小。
+    """
     train = list(TRAIN)
     valid = list(VALID)
     if text_file:

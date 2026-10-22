@@ -8,6 +8,10 @@ from data import TEXT, BLOCK
 from model import LSTMLM
 
 def run(*,steps=30,seed=42,text_file=None):
+    """字符预测使用右移一位的标签，验证数据不得回传梯度。
+
+    核心不变量：Tensor: ids[B,T] → emb[B,T,D] → logits[B,T,V]。
+    """
     from utils.data import read_text
     torch.manual_seed(seed)
     torch.set_num_threads(1)
@@ -26,7 +30,10 @@ def run(*,steps=30,seed=42,text_file=None):
         x=train[offset:offset+BLOCK][None,:]
         y=train[offset+1:offset+BLOCK+1][None,:]
         _,loss=model(x,y)
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
         if t in (0,steps-1):
             logger.info("LSTM train step {} | CE {:.5f}",t+1,loss.item())
     model.eval()

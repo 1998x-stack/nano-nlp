@@ -52,6 +52,10 @@ class FittedHMM:
         return list(reversed(path)),grid
 
 def run(*, steps=1, seed=42, text_file=None):
+    """仅从 train 估计 HMM 三种概率，验证阶段进行 Viterbi 回溯。
+
+    核心不变量：对数空间避免概率连乘下溢；每个状态需保存最优前驱而不是局部贪心。
+    """
     train,valid=TRAIN,VALID
     if text_file:
         from utils.data import read_jsonl,nonoverlap_split
@@ -70,7 +74,8 @@ def run(*, steps=1, seed=42, text_file=None):
     total=correct=0
     for words,tags in valid:
         pred,grid=hmm.predict(words)
-        total+=len(tags);correct+=sum(a==b for a,b in zip(tags,pred))
+        total+=len(tags)
+        correct+=sum(a==b for a,b in zip(tags,pred))
         rows.append({"tokens":words,"gold":tags,"pred":pred,
                      "viterbi_scores":[{k:round(v,5) for k,v in row.items()} for row in grid]})
     save_json_state({"states": hmm.states, "vocab": hmm.vocab, "smoothing": hmm.smoothing,

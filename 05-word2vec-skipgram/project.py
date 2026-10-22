@@ -7,6 +7,10 @@ from data import TEXT, CONTEXT_WINDOW
 from model import SkipGram, make_pairs
 
 def run(*,steps=30,seed=42,text_file=None):
+    """正例来自词窗，负例来自随机采样；可学习参数是两张 embedding。
+
+    核心不变量：训练与验证需要避免直接重用同一正样本索引；近邻用归一化 cosine。
+    """
     torch.manual_seed(seed)
     torch.set_num_threads(1)
     tokens=list(TEXT)
@@ -32,7 +36,8 @@ def run(*,steps=30,seed=42,text_file=None):
         loss=network(train[:,0],train[:,1],neg)
         optimizer.zero_grad()
         loss.backward()
-        optimizer.step(); record_step(loss=float(loss.item()))
+        optimizer.step()
+        record_step(loss=float(loss.item()))
         if step in (0,steps-1):
             logger.info("skipgram step={} loss={:.4f}",step+1,loss.item())
     with torch.no_grad():

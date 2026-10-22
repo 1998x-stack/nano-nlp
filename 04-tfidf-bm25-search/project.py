@@ -5,6 +5,10 @@ from data import DOCS, VALID
 from model import BM25
 
 def run(*, steps=1, seed=42, text_file=None):
+    """文档是固定索引库，query 及 gold relevant 在评估路径使用。
+
+    核心不变量：BM25 词频饱和与长度归一化独立影响文档排序。
+    """
     from utils.metrics import mrr, recall_at_k
     docs,valid=DOCS,VALID
     if text_file:
