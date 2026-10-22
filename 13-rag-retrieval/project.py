@@ -16,6 +16,10 @@ def answer(question,engine,documents,k=2):
             "retrieved":[{"id":d["id"],"score":round(float(s),5)} for d,s in hits]}
 
 def run(*,steps=1,seed=42,text_file=None):
+    """首先索引文档，再评估证据召回，返回可验证的抽取式回答。
+
+    核心不变量：引用只能来自实际检索命中文档；没有正分数证据时必须拒答。
+    """
     docs,valid=DOCS,VALID
     if text_file:
         from utils.data import typed_records

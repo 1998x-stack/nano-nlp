@@ -7,7 +7,12 @@ from model import LoRALinear
 from data import regression_data
 
 def run(*,steps=30,seed=42,text_file=None):
-    torch.manual_seed(seed);torch.set_num_threads(1)
+    """冻结基座 W，只训练低秩矩阵 B@A，在独立验证样本上计算 MSE。
+
+    核心不变量：B 零初始化使初始 adapter 不改变基座；训练后 W 的张量必须原样不变。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
     (x_train,y_train),(x_valid,y_valid)=regression_data(seed)
     if text_file:
         from utils.data import read_jsonl,nonoverlap_split
@@ -31,7 +36,10 @@ def run(*,steps=30,seed=42,text_file=None):
         baseline=F.mse_loss(layer(x_valid),y_valid).item()
     for step in range(steps):
         loss=F.mse_loss(layer(x_train),y_train)
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
         if step in (0,steps-1):logger.info("LoRA iteration={} mse={:.4f}",step+1,loss.item())
     with torch.no_grad():
         pred=layer(x_valid)

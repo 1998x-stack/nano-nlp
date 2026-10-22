@@ -20,7 +20,12 @@ def margin(logp,prompt,chosen,rejected):
     return values.gather(1,chosen[:,None]).squeeze(1)-values.gather(1,rejected[:,None]).squeeze(1)
 
 def run(*,steps=30,seed=42,text_file=None):
-    torch.manual_seed(seed);torch.set_num_threads(1)
+    """先 SFT 后冻结 reference，DPO 优化 chosen/rejected 相对对数优势。
+
+    核心不变量：冻结的 reference 不产生梯度，chosen 与 rejected 始终属于同一 prompt。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
     train,valid=TRAIN,VALID
     if text_file:
         from utils.data import read_jsonl,nonoverlap_split
@@ -41,7 +46,10 @@ def run(*,steps=30,seed=42,text_file=None):
     sft_steps=max(1,steps//2)
     for t in range(sft_steps):
         loss=F.nll_loss(policy(prompt),chosen)
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
     reference=copy.deepcopy(policy).eval()
     for parameter in reference.parameters():
         parameter.requires_grad_(False)
@@ -55,11 +63,16 @@ def run(*,steps=30,seed=42,text_file=None):
             ref_margin=margin(reference,prompt,chosen,rejected)
         advantage=policy_margin-ref_margin
         loss=-F.logsigmoid(beta*advantage).mean()
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
-    q=torch.tensor([r[0] for r in valid]);true=torch.tensor([r[1] for r in valid])
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
+    q=torch.tensor([r[0] for r in valid])
+    true=torch.tensor([r[1] for r in valid])
     false=torch.tensor([r[2] for r in valid])
     with torch.no_grad():
-        logp=policy(q);refp=reference(q)
+        logp=policy(q)
+        refp=reference(q)
         preference_accuracy=(logp.gather(1,true[:,None])>logp.gather(1,false[:,None])).float().mean().item()
         improvement=(margin(policy,q,true,false)-margin(reference,q,true,false)).mean().item()
     rows=[{"prompt":int(p),"chosen":int(c),"rejected":int(r),

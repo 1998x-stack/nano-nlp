@@ -7,7 +7,12 @@ from data import TRAIN,VALID
 from model import OpPolicy,verify
 
 def run(*,steps=30,seed=42,text_file=None):
-    torch.manual_seed(seed);torch.set_num_threads(1)
+    """采样组内 candidate，通过外部执行器计算 reward，再做策略梯度。
+
+    核心不变量：奖励来源与策略模型独立；同组奖励无方差时相对优势为零。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
     train,valid=TRAIN,VALID
     if text_file:
         from utils.data import read_jsonl,nonoverlap_split
@@ -24,7 +29,8 @@ def run(*,steps=30,seed=42,text_file=None):
     group_size=8
     rewards_history=[]
     for t in range(steps):
-        losses=[];mean_rewards=[]
+        losses=[]
+        mean_rewards=[]
         for op,a,b in train:
             dist=policy(op)
             actions=dist.sample((group_size,))
@@ -34,7 +40,10 @@ def run(*,steps=30,seed=42,text_file=None):
             losses.append(-(advantage.detach()*dist.log_prob(actions)).mean())
             mean_rewards.append(rewards.float().mean().item())
         loss=torch.stack(losses).mean()
-        optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
         rewards_history.append(sum(mean_rewards)/len(mean_rewards))
         if t in (0,steps-1):logger.info("RL iteration {} group reward={:.4f}",t+1,rewards_history[-1])
     probs=policy.logits.softmax(-1).detach()

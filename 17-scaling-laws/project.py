@@ -11,6 +11,10 @@ def optimal(budget):
     return min(candidates,key=lambda x:x[0]),len(candidates)
 
 def run(*,steps=1,seed=42,text_file=None):
+    """在合成幂律损失下扫描受预算 N·D 约束的参数数据组合。
+
+    核心不变量：预算增大不会让最优损失变差；结果不代表真实 Chinchilla 拟合。
+    """
     budgets=BUDGETS
     if text_file:
         from utils.data import read_jsonl

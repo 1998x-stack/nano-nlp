@@ -10,6 +10,10 @@ def jaccard(left,right):
     return len(a & b)/len(a | b) if a or b else 1.
 
 def run(*,steps=1,seed=42,text_file=None):
+    """按质量排序，先过滤低质量和精确重复，再用 LSH+Jaccard 近似去重。
+
+    核心不变量：LSH 是候选生成而不是判定；最终近重复需要核对真实 shingle Jaccard。
+    """
     # 高质量代表先进入候选簇，防止随机输入顺序保留较差版本。
     docs=RAW
     if text_file:
