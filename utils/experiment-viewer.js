@@ -4,7 +4,7 @@
   if(!root) return;
   const panel=document.createElement("section");
   panel.className="experiment-viewer";
-  panel.innerHTML="<h2>真实训练 / 评估结果</h2><p>从本章 outputs 目录选择 metrics.json、history.jsonl、examples.jsonl；只在本地浏览器解析，不上传文件。未选择文件时没有虚构曲线。</p>";
+  panel.innerHTML="<h2>真实训练 / 评估结果</h2><p>从本章 outputs 目录选择 metrics.json、history.jsonl、examples.jsonl、manifest.json；只在本地浏览器解析，不上传文件。未选择文件时没有虚构曲线。</p>";
   root.append(panel);
   function renderFile(label,parse){
     const wrap=document.createElement("label");
@@ -24,6 +24,17 @@
     p.textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);
     parent.append(p);
   }
+  renderFile("导入 manifest.json（数据血缘）",(raw,out)=>{
+    const record=JSON.parse(raw);
+    if(record.schema_version!==3 || !record.source || !record.artifacts)throw Error("非v3运行清单");
+    pre(out,{chapter:record.chapter,task:record.task,source:record.source,
+      code_revision:record.code_revision,evaluation_scope:record.evaluation_scope,
+      artifact_hashes:Object.fromEntries(Object.entries(record.artifacts)
+        .map(([name,value])=>[name,value.sha256]))});
+    const p=document.createElement("p");
+    p.textContent="这是原始 manifest 的声明；如需核对文件 hash，请使用 --mode inspect。";
+    out.append(p);
+  });
   renderFile("导入 metrics.json",(raw,out)=>{
     const value=JSON.parse(raw);
     if(!value.metrics)throw Error("无 metrics 字段");

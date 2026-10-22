@@ -69,7 +69,7 @@ def run_cli(project, *, default_steps=30, default_output=None):
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", default=default_output or str(ROOT / "outputs" / Path(project.__file__).resolve().parent.name))
     parser.add_argument("--text-file", type=Path, help="可选本地数据文本；仅支持该选项的章节会读取它")
-    parser.add_argument("--mode", choices=("train", "predict"), default="train", help="独立训练或从磁盘恢复推理")
+    parser.add_argument("--mode", choices=("train", "predict", "inspect"), default="train", help="训练、独立恢复推理或检查运行工件完整性")
     parser.add_argument("--input", default=None, help="预测输入：文本、查询或逗号分隔 token；默认用内置示例")
     parser.add_argument("--temperature", type=float, default=0.0, help="仅 GPT 推理：0 为 greedy，>0 为随机采样")
     parser.add_argument("--top-k", type=int, default=0, help="仅 GPT 推理：0 使用全部词表")
@@ -84,7 +84,22 @@ def run_cli(project, *, default_steps=30, default_output=None):
     # 每次运行只在 CLI 入口设置上下文；模型和数据模块不关心保存路径。
     from utils.v2io import start_run, write_history
     start_run(target)
+    from utils.provenance import verify_manifest, write_manifest
+    if args.mode == "inspect":
+        manifest = verify_manifest(target)
+        logger.info("manifest verified: {} | {}", manifest["chapter"], manifest["task"])
+        print("RESULT:", json.dumps(_jsonable({
+            "chapter": manifest["chapter"], "task": manifest["task"],
+            "source": manifest["source"], "artifact_count": len(manifest["artifacts"]),
+            "evaluation_scope": manifest["evaluation_scope"], "verified": True,
+        }), ensure_ascii=False, allow_nan=False))
+        return
     if args.mode == "predict":
+        # 向后兼容 v2 checkpoint；仅 v3 manifest 存在时执行完整性检查。
+        if (target / "manifest.json").is_file():
+            verify_manifest(target)
+        else:
+            logger.warning("no manifest.json: legacy checkpoint is not integrity-verified")
         if not hasattr(project, "predict_saved"):
             raise NotImplementedError("章节尚未定义 predict_saved")
         if (args.temperature, args.top_k, args.new_tokens) != (0.0, 0, 40):
@@ -102,6 +117,10 @@ def run_cli(project, *, default_steps=30, default_output=None):
     write_history()
     save_metrics(target, metrics, seed=args.seed, config={"steps":args.steps, "text_file":str(args.text_file) if args.text_file else None})
     save_examples(target, examples)
+    manifest = write_manifest(target, project_file=project.__file__,
+                              task=metrics.get("task", "unspecified"),
+                              seed=args.seed, steps=args.steps, text_file=args.text_file)
+    logger.info("provenance saved: {}", manifest)
     logger.info("experiment done | metrics={} | examples={}", metrics, len(examples))
     # 只有 stdout 的 RESULT 标识为机器可读 summary；loguru 输出走 stderr。
     print("RESULT:", json.dumps(_jsonable(metrics), ensure_ascii=False, allow_nan=False))
