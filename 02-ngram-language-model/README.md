@@ -102,3 +102,21 @@ python -m unittest discover -s tests -v
 2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
 3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
 4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？
+
+
+## v3.0 · OOV 不是额外的概率空间
+
+v2 对新词直接使用 `(0+1)/(count(history)+|V|)`，但未将它加入已归一化的词表。这会让词表外出现多个不受约束的额外概率事件。
+
+v3 明确规定输出空间 `V = {training words, <eos>, <unk>}`：
+
+```text
+normalize(next_word) = next_word    if next_word ∈ V
+                     = <unk>        otherwise
+P(next_word | history) = (count(h,w)+1) / (count(h)+|V|)
+Σ_{w ∈ V} P(w|h) = 1
+```
+
+未知的历史词也统一成 `<unk>` 状态；查询不允许修改已拟合频数。验证句与训练原句分开；`metrics.json` 记录 `vocab_scope=train_only`、`val_oov_tokens`、`val_evaluated_tokens`。测试见 [test_v3_bigram.py](../tests/test_v3_bigram.py)。
+
+**手算练习：** 语料 `red cat runs`，询问 `red→unseen` 的概率时应等于 `red→<unk>`，而不是为每个未见英文词创造新输出类别。

@@ -93,3 +93,12 @@ python -m unittest discover -s tests -v
 2. 从训练/验证路径出发，列出三处潜在的信息泄漏来源，并指出代码中的防护点。
 3. 不重新训练，删除当前 Python 进程，再使用 checkpoint 恢复推理；比较相同输入的输出。
 4. 给出本章方法与之前一代模型的性能、假设或可解释性取舍；指出本章明确没有实现的论文内容。
+
+
+## v3.0 · 区分 seen-prompt 和 unseen-prompt 指标
+
+本教学策略只接受两个 prompt ID，并学习单 token 的 chosen/rejected。v2 原始 TRAIN/VALID 复用相同 prompt，意味着所谓 `val_chosen_win_rate` **并非独立未见 prompt 泛化指标**。
+
+v3 明确输出 `evaluation_scope=seen_prompts`、`val_prompt_overlap`、`seen_prompt_chosen_win_rate`，保留旧的指标键只是兼容性；另外拒绝同一个 prompt 出现相反的 chosen 标签。Fixture 不再使用互相矛盾的答案对。
+
+若要研究实际 DPO 效果，必须继续设计包含不同 prompt 语义的预训练策略和参考策略，并使用完全独立的验证问题；这属于 [V3_REVIEW_AND_PLAN.md](../V3_REVIEW_AND_PLAN.md) 的下一批工作。
