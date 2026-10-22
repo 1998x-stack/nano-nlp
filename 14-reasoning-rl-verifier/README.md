@@ -47,3 +47,17 @@ https://arxiv.org/pdf/2501.12948
 - 修改一个参数（例如 rank、beta、budget、k、steps），预测结果变化再运行验证。
 - 列出此算法的监督信号来自哪里：标签、偏好、最终奖励、检索文档还是无监督统计？
 - 运行根目录单元测试，检查边界条件。
+
+## v2.0 完整可运行的任务闭环
+
+模块分工：`data.py` 定义输入与验证样本，`model.py` 对应论文数学或可学习结构，`project.py` 负责估计/训练/独立评估/推理并提供错误切片，`demo.py` 统一日志、参数和 JSONL 工件。
+
+```bash
+pip install -r requirements.txt
+python 14-reasoning-rl-verifier/demo.py --steps 30 --output-dir outputs/14-reasoning-rl-verifier
+cat outputs/14-reasoning-rl-verifier/metrics.json
+```
+
+**本章 MVP 的验收任务：** 采样分组候选答案，以外部确定性 verifier 评分并更新策略，在未训练数值上检查成功率。
+
+**误差分析方向：** 不把 toy 结果外推为工业训练能力；保留每条 examples.jsonl 并改变语料/阈值/随机种子，观察为什么结论会改变。

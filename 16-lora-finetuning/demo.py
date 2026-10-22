@@ -1,43 +1,18 @@
-"""LoRA 的四则运算：冻结 W，训练增量 B@A。"""
-import argparse
-import torch
-from torch import nn
-from torch.nn import functional as F
-
-class LoRALinear(nn.Module):
-    def __init__(self, in_dim=8, out_dim=4, rank=2, alpha=4):
-        super().__init__()
-        self.base = nn.Linear(in_dim, out_dim, bias=False)
-        for p in self.base.parameters():
-            p.requires_grad_(False)  # 冻结预训练权重
-        self.A = nn.Linear(in_dim, rank, bias=False)
-        self.B = nn.Linear(rank, out_dim, bias=False)
-        nn.init.normal_(self.A.weight, std=0.02)
-        nn.init.zeros_(self.B.weight)  # 初始化时恰好等于基座模型
-        self.scale = alpha / rank
-
-    def forward(self, x):
-        return self.base(x) + self.B(self.A(x)) * self.scale
-
-def train(steps=25):
-    torch.manual_seed(42)
-    model = LoRALinear()
-    x = torch.randn(32, 8)
-    target = torch.stack([x[:, 0] * 2, x[:, 1] * (-3),
-                          x[:, 2] + x[:, 3], x[:, 4]], dim=1)
-    optimizer = torch.optim.AdamW(
-        list(model.A.parameters()) + list(model.B.parameters()), lr=0.08
-    )
-    for _ in range(steps):
-        loss = F.mse_loss(model(x), target)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    total = sum(p.numel() for p in model.parameters())
-    return {"trainable": trainable, "total": total, "loss": round(loss.item(), 4)}
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--steps", type=int, default=25)
-    print("RESULT:", train(p.parse_args().steps))
+"""16-lora-finetuning: 完整 MVP 实验入口。"""
+import sys
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+ROOT=HERE.parent
+for path in (HERE,ROOT):
+    if str(path) not in sys.path:sys.path.insert(0,str(path))
+if __name__!="__main__" and HERE.name in ("15-data-cleaning-minhash","17-scaling-laws"):
+    import importlib.util
+    name="_nanonlp_"+HERE.name.replace("-","_")
+    spec=importlib.util.spec_from_file_location(name,HERE/"model.py")
+    model=importlib.util.module_from_spec(spec);sys.modules[name]=model;spec.loader.exec_module(model)
+    for key in (("minhash","deduplicate","DOCS") if HERE.name=="15-data-cleaning-minhash" else ("search_budget","synthetic_loss")):
+        globals()[key]=getattr(model,key)
+if __name__=="__main__":
+    import project
+    from utils.runtime import run_cli
+    run_cli(project,default_steps=30,default_output=str(ROOT/"outputs"/HERE.name))
