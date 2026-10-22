@@ -9,6 +9,21 @@ from data import regression_data
 def run(*,steps=30,seed=42,text_file=None):
     torch.manual_seed(seed);torch.set_num_threads(1)
     (x_train,y_train),(x_valid,y_valid)=regression_data(seed)
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        import math
+        records=read_jsonl(text_file)
+        if len(records)<4 or not all(isinstance(r.get("x"),list) and isinstance(r.get("y"),list)
+            and len(r["x"])==8 and len(r["y"])==4
+            and all(type(v) in (float,int) and math.isfinite(v) for v in r["x"]+r["y"])
+            for r in records):
+            raise ValueError("LoRA JSONL: x为8个有限实数, y为4个有限实数")
+        a,b=nonoverlap_split(records)
+        x_train=torch.tensor([r["x"] for r in a],dtype=torch.float32)
+        y_train=torch.tensor([r["y"] for r in a],dtype=torch.float32)
+        x_valid=torch.tensor([r["x"] for r in b],dtype=torch.float32)
+        y_valid=torch.tensor([r["y"] for r in b],dtype=torch.float32)
+
     layer=LoRALinear(in_dim=8,out_dim=4,rank=2,alpha=4)
     frozen=layer.base.weight.detach().clone()
     optim=torch.optim.AdamW(list(layer.A.parameters())+list(layer.B.parameters()),lr=.07)

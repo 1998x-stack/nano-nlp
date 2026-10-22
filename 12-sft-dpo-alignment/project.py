@@ -21,9 +21,21 @@ def margin(logp,prompt,chosen,rejected):
 
 def run(*,steps=30,seed=42,text_file=None):
     torch.manual_seed(seed);torch.set_num_threads(1)
-    prompt=torch.tensor([r[0] for r in TRAIN])
-    chosen=torch.tensor([r[1] for r in TRAIN])
-    rejected=torch.tensor([r[2] for r in TRAIN])
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        rows=read_jsonl(text_file)
+        if len(rows)<4 or not all(type(r.get("prompt")) is int and
+                 type(r.get("chosen")) is int and type(r.get("rejected")) is int
+                 and r["prompt"] in (0,1) and r["chosen"] in (0,1)
+                 and r["rejected"]==1-r["chosen"] for r in rows):
+            raise ValueError("DPO JSONL: prompt/chosen/rejected整数0/1; chosen与rejected不同")
+        a,b=nonoverlap_split(rows)
+        train=[(r["prompt"],r["chosen"],r["rejected"]) for r in a]
+        valid=[(r["prompt"],r["chosen"],r["rejected"]) for r in b]
+    prompt=torch.tensor([r[0] for r in train])
+    chosen=torch.tensor([r[1] for r in train])
+    rejected=torch.tensor([r[2] for r in train])
     policy=PreferencePolicy()
     optim=torch.optim.AdamW(policy.parameters(),lr=.07)
     sft_steps=max(1,steps//2)
@@ -44,8 +56,8 @@ def run(*,steps=30,seed=42,text_file=None):
         advantage=policy_margin-ref_margin
         loss=-F.logsigmoid(beta*advantage).mean()
         optim.zero_grad();loss.backward();optim.step(); record_step(loss=float(loss.item()))
-    q=torch.tensor([r[0] for r in VALID]);true=torch.tensor([r[1] for r in VALID])
-    false=torch.tensor([r[2] for r in VALID])
+    q=torch.tensor([r[0] for r in valid]);true=torch.tensor([r[1] for r in valid])
+    false=torch.tensor([r[2] for r in valid])
     with torch.no_grad():
         logp=policy(q);refp=reference(q)
         preference_accuracy=(logp.gather(1,true[:,None])>logp.gather(1,false[:,None])).float().mean().item()
@@ -54,7 +66,7 @@ def run(*,steps=30,seed=42,text_file=None):
            "policy_chosen_logp":round(float(logp[i,c]),5),
            "policy_rejected_logp":round(float(logp[i,r]),5),
            "reference_chosen_logp":round(float(refp[i,c]),5)}
-          for i,(p,c,r) in enumerate(VALID)]
+          for i,(p,c,r) in enumerate(valid)]
     save_torch_state(policy, {"vocab": 2, "dim": 12, "beta": beta})
     save_torch_state(reference, {"vocab": 2, "dim": 12}, filename="reference.pt")
 

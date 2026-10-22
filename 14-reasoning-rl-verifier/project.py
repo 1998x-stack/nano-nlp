@@ -8,13 +8,24 @@ from model import OpPolicy,verify
 
 def run(*,steps=30,seed=42,text_file=None):
     torch.manual_seed(seed);torch.set_num_threads(1)
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        rows=read_jsonl(text_file)
+        if len(rows)<4 or not all(r.get("operation") in ("add","multiply") and
+                 type(r.get("a")) is int and type(r.get("b")) is int for r in rows):
+            raise ValueError("Reasoning JSONL: operation=add/multiply, a/b是整数")
+        a,b=nonoverlap_split(rows)
+        encode=lambda r:(0 if r["operation"]=="add" else 1,r["a"],r["b"])
+        train=[encode(r) for r in a]
+        valid=[encode(r) for r in b]
     policy=OpPolicy()
     optim=torch.optim.AdamW(policy.parameters(),lr=.12)
     group_size=8
     rewards_history=[]
     for t in range(steps):
         losses=[];mean_rewards=[]
-        for op,a,b in TRAIN:
+        for op,a,b in train:
             dist=policy(op)
             actions=dist.sample((group_size,))
             attempts=[a+b if i.item()==0 else a*b for i in actions]
@@ -28,7 +39,7 @@ def run(*,steps=30,seed=42,text_file=None):
         if t in (0,steps-1):logger.info("RL iteration {} group reward={:.4f}",t+1,rewards_history[-1])
     probs=policy.logits.softmax(-1).detach()
     rows=[]
-    for op,a,b in VALID:
+    for op,a,b in valid:
         action=int(policy.logits[op].argmax())
         prediction=a+b if action==0 else a*b
         gold=a+b if op==0 else a*b
@@ -38,8 +49,8 @@ def run(*,steps=30,seed=42,text_file=None):
                      "p_add":round(float(probs[op,0]),4)})
     save_torch_state(policy, {"task": "toy_operator_policy", "group_size": group_size, "reward_history": rewards_history})
 
-    return {"task":"verifiable_policy_optimization","train_tasks":len(TRAIN),
-            "valid_tasks":len(VALID),"val_success_rate":sum(r["correct"] for r in rows)/len(rows),
+    return {"task":"verifiable_policy_optimization","train_tasks":len(train),
+            "valid_tasks":len(valid),"val_success_rate":sum(r["correct"] for r in rows)/len(rows),
             "last_group_reward":round(rewards_history[-1],5)},rows
 
 
