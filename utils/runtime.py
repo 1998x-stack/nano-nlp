@@ -69,6 +69,8 @@ def run_cli(project, *, default_steps=30, default_output=None):
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", default=default_output or str(ROOT / "outputs" / Path(project.__file__).resolve().parent.name))
     parser.add_argument("--text-file", type=Path, help="可选本地数据文本；仅支持该选项的章节会读取它")
+    parser.add_argument("--mode", choices=("train", "predict"), default="train", help="独立训练或从磁盘恢复推理")
+    parser.add_argument("--input", default=None, help="预测输入：文本、查询或逗号分隔 token；默认用内置示例")
     args = parser.parse_args()
     if args.steps < 1:
         parser.error("--steps 必须 >= 1")
@@ -76,7 +78,18 @@ def run_cli(project, *, default_steps=30, default_output=None):
     seed_everything(args.seed)
     logger.info("starting experiment: {} | seed={} | steps={} | output={}",
                 project.__file__, args.seed, args.steps, target)
+    # 每次运行只在 CLI 入口设置上下文；模型和数据模块不关心保存路径。
+    from utils.v2io import start_run, write_history
+    start_run(target)
+    if args.mode == "predict":
+        if not hasattr(project, "predict_saved"):
+            raise NotImplementedError("章节尚未定义 predict_saved")
+        answer = project.predict_saved(target, args.input)
+        logger.info("restored prediction completed | chapter={}", Path(project.__file__).parent.name)
+        print("RESULT:", json.dumps(_jsonable(answer), ensure_ascii=False, allow_nan=False))
+        return
     metrics, examples = project.run(steps=args.steps, seed=args.seed, text_file=args.text_file)
+    write_history()
     save_metrics(target, metrics, seed=args.seed, config={"steps":args.steps, "text_file":str(args.text_file) if args.text_file else None})
     save_examples(target, examples)
     logger.info("experiment done | metrics={} | examples={}", metrics, len(examples))
