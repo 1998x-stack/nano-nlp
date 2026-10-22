@@ -1,0 +1,6 @@
+{"type":"document","id":"d1","text":"attention connects tokens using query and key"}
+{"type":"document","id":"d2","text":"lstm uses gates to remember sequences"}
+{"type":"document","id":"d3","text":"bm25 finds documents with term frequency"}
+{"type":"document","id":"d4","text":"word2vec learns embeddings from cooccurrence"}
+{"type":"query","query":"what uses gates in sequences","relevant":["d2"]}
+{"type":"query","query":"term frequency ranking","relevant":["d3"]}

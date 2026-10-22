@@ -1,0 +1,6 @@
+the cat likes fish
+the dog likes fish
+a cat sees the dog
+the cat eats fish
+a dog sees fish
+the dog eats fish

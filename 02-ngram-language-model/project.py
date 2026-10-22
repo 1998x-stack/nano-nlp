@@ -1,0 +1,68 @@
+"""可运行 Bigram 任务：估计条件概率、验证 NLL 与生成。"""
+import math
+from loguru import logger
+from utils.v2io import save_json_state, load_json_state
+from data import TRAIN, VALID
+from model import BigramLM
+
+def generate(lm, start="the", max_tokens=8):
+    """贪心生成：每一步只用之前一个 token。"""
+    result = [start]
+    for _ in range(max_tokens):
+        candidates = lm.predict(result[-1])
+        word = candidates[0][0]
+        if word == "<eos>":
+            break
+        result.append(word)
+    return " ".join(result)
+
+def run(*, steps=1, seed=42, text_file=None):
+    """以统计频数拟合 P(next|previous)，只在保留集计算 NLL/PPL。
+
+    核心不变量：加一平滑的分母是该历史词的总转移次数加整个输出词表大小。
+    """
+    train = list(TRAIN)
+    valid = list(VALID)
+    if text_file:
+        from utils.data import read_text
+        sents = [line.strip().lower() for line in read_text(text_file).splitlines() if len(line.split()) >= 3]
+        if len(sents) < 5:
+            raise ValueError("外部文件需至少 5 行，每行 3 个词")
+        train, valid = sents[:-2], sents[-2:]
+    logger.info("fitting bigram counts: train={} valid={}",len(train),len(valid))
+    model = BigramLM().fit(train)
+    examples = []
+    total_nll, tokens = 0., 0
+    for sentence in valid:
+        prev = "<bos>"
+        nll = 0.0
+        for word in sentence.lower().split() + ["<eos>"]:
+            # 对 OOV 明确提示，不把未见词的概率误当已训练词表归一化概率。
+            if word not in model.vocab:
+                logger.warning("OOV token '{}' in validation; smoothed score is heuristic",word)
+            prob = model.probability(prev,word)
+            nll -= math.log(prob)
+            tokens += 1
+            prev = word
+        total_nll += nll
+        examples.append({"sentence":sentence,"nll":round(nll,5),"perplexity":round(math.exp(nll/(len(sentence.split())+1)),5)})
+    avg_nll = total_nll / tokens
+    generated = generate(model)
+    logger.info("vocab={} avg_nll={:.4f} generated={!r}",len(model.vocab),avg_nll,generated)
+    save_json_state({"vocab": sorted(model.vocab), "counts": {k: dict(v) for k, v in model.counts.items()}})
+
+    return {"task":"next_word_prediction","train_samples":len(train),"valid_samples":len(valid),
+            "vocab_size":len(model.vocab),"val_nll":round(avg_nll,6),
+            "val_perplexity":round(math.exp(avg_nll),5),"generated":generated}, examples
+
+
+def predict_saved(directory, text=None):
+    """恢复 bigram 频数而非从验证语料重新拟合。"""
+    from collections import Counter, defaultdict
+    data = load_json_state(directory)
+    lm = BigramLM()
+    lm.vocab = set(data["vocab"])
+    lm.counts = defaultdict(Counter, {k: Counter(v) for k,v in data["counts"].items()})
+    word = (text or "likes").strip().lower().split()[-1]
+    return {"previous": word, "top_next": [{"word": w, "probability": round(p,6)}
+            for w,p in lm.predict(word)[:5]], "vocab": len(lm.vocab)}

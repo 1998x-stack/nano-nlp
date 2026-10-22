@@ -1,0 +1,5 @@
+{"id":"a","text":"NLP models learn from a large text corpus","quality":0.98,"source":"site-a"}
+{"id":"b","text":"NLP models learn from a large text corpus","quality":0.75,"source":"mirror"}
+{"id":"c","text":"Attention connects tokens using query and key","quality":0.9,"source":"site-b"}
+{"id":"d","text":"Transformer models process sequences of tokens","quality":0.85,"source":"tutorial"}
+{"id":"e","text":"buy buy buy buy","quality":0.1,"source":"spam"}

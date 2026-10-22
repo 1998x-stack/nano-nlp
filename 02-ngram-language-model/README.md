@@ -1,0 +1,104 @@
+# 02 · N-gram 统计语言模型
+
+> 1980s–2000s · 如何用语料统计预测下一个词？
+
+**一句话抓住核心：** 通过前 n-1 个词作为上下文统计条件频数，使用加一平滑避免零概率。
+
+## 运行 (先离线后扩展)
+
+```bash
+python -m pip install -r requirements-classic.txt
+python 02-ngram-language-model/demo.py 
+python -m http.server 8000  # 访问 /02-ngram-language-model/index.html
+```
+
+## 从输入到输出的关键步骤
+
+1. **切词**：将句子映射为 token 序列。代码锚点：`sentence.split()`
+2. **加入边界符**：句首 <bos>、句末 <eos> 保持序列长度统计。代码锚点：`['<bos>'] + words + ['<eos>']`
+3. **统计转移**：统计 context 与 next token 联合出现次数。代码锚点：`counts[context][word] += 1`
+4. **平滑预测**：加一平滑使未见词依然有概率。代码锚点：`(count + 1) / (total + V)`
+
+## 核心公式
+
+```text
+P(w|h) = (count(h,w)+1) / (count(h)+|V|)
+```
+
+## 为什么它比前一代有效？
+
+通过前 n-1 个词作为上下文统计条件频数，使用加一平滑避免零概率。
+
+## 重点阅读代码
+
+推荐先读 [data.py](./data.py) 的任务样本、[model.py](./model.py) 的核心公式实现，再看 [project.py](./project.py) 的训练/验证/保存流程。最后运行 [demo.py](./demo.py)：它只是 loguru CLI 入口，不是算法本体。
+
+## 数据集 (进阶，可选)
+
+- Hugging Face / URL：https://huggingface.co/datasets/Salesforce/wikitext
+- 使用建议：WikiText-2 (wikitext-2-raw-v1)，与 nanoGPT 的小语料启动方式相同：先 toy，再大文本。
+- 所有实验默认内置 toy 数据，无需注册账号、网络或下载。
+- 如使用外部数据，须核对 dataset card 的许可、访问限制与训练/验证集划分。
+
+## 核心论文
+
+- https://aclanthology.org/J07-2002/ (在线论文/出版页；未将第三方 PDF 二进制直接复制入仓库)
+
+## 自己动手
+
+- 修改输入，让算法暴露边界条件；记录中间变量如何改变。
+- 对照 [交互图](./index.html) 中的步骤，定位 `demo.py` 实现。
+- 思考为什么下一代 NLP 技术要改进本章方法。
+
+**常见误区：** 上下文长度固定；稀有 n-gram 稀疏，无法共享近义词统计。
+
+**验收：** 运行结果包含 `RESULT:`；根目录运行 `python -m unittest discover -s tests -v`。
+
+## v2.0 · 完整 MVP 入口
+
+本章现已拆分为 `data.py`（训练/验证样本与边界）、`model.py`（核心算法）、`project.py`（任务训练/验证/推理）、`demo.py`（运行命令与 loguru）。输出包括 `metrics.json`、`examples.jsonl` 和 `run.log`，且**不在模块导入时执行训练**。
+
+```bash
+pip install -r requirements.txt
+python 02-ngram-language-model/demo.py --steps 1 --output-dir outputs/02-ngram-language-model
+cat outputs/02-ngram-language-model/metrics.json
+```
+
+**独立验证的定义**：从训练语料估计 bigram 条件概率，在 held-out 文本上计算每 token NLL 和困惑度；另执行贪心生成。
+
+**实验建议**：改变输入集、训练步数（统计方法修改数据而非增加无意义 epochs）、种子，并比较工件中每条结果，而不仅看一个标量。
+
+## v2.0 深度：完整任务与代码执行路径
+
+**问题与模型：** N-gram 将任意长度历史压缩成固定阶数的 Markov 上下文；add-one 是明确的概率模型而不是神经网络。
+
+**逐个模块阅读：** `data.py` 提供训练/验证任务，`model.py` 描述算法核心，`project.py` 调用训练或统计拟合、计算验证指标并保存工件，`inference.py`（神经章节）实现权重恢复预测；经典章节的恢复方法直接定义在 `project.py`。`demo.py` 只是统一 CLI，避免隐藏算法。
+
+### 运行、保存、重新打开模型
+
+```bash
+python 02-ngram-language-model/demo.py --steps 30 --output-dir outputs/02-ngram-language-model
+python 02-ngram-language-model/demo.py --mode predict --output-dir outputs/02-ngram-language-model --input 'likes'
+python -m unittest discover -s tests -v
+```
+训练、验证与推理不必处于同一进程。工件目录中包含：`metrics.json`（带 seed 和配置的评估报告）、`examples.jsonl`（逐样本预测）、`run.log`（loguru 日志）、`history.jsonl`（真实优化步骤；统计规则项目可为空）、`checkpoint.json / checkpoint.pt`（仅保存可恢复统计状态或参数张量）。
+### 如何衡量这章是不是真的在工作
+
+**可量化输出：** val_nll、val_perplexity、词表大小；P(w|h) 对整个词表求和必须约为 1。
+
+**关键正确性断言：** 对给定历史词，单独恢复频数表后输出相同的 next-word 排序。
+
+**建议的对照实验：** 提高平滑常数 α 对低频词和未见上下文的作用；比较不平滑时零概率问题。
+
+**能力边界：** 测试 OOV：新单词不应被当作词表已知 token 参与归一化；生产版需显式 <unk>。
+
+### HTML 的使用方式
+
+先操作当前页面的专属计算流程与参数实验，再运行上方命令。在页面下方 **真实训练 / 评估结果** 面板选择输出目录中的三个实验文件。专属组件是数学演示，导入组件则只显示实际运行产生的指标、损失与预测；二者不能混为一谈。
+
+### 面试自测
+
+1. 这个模型在该阶段解决了什么具体瓶颈？它借助了哪些条件独立性、优化目标或结构约束？
+2. 指出模型中最关键的 3 行代码，以及输入输出 Tensor/状态的具体含义。
+3. 不看代码，写出本章评估指标的计算过程，说明哪些改动会造成数据泄漏。
+4. 如何构造一个反例证明本章方法的局限？下一代模型做了什么改进？

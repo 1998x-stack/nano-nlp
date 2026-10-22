@@ -1,0 +1,6 @@
+{"sentence":"the cat sees a dog","accepted":true}
+{"sentence":"a dog likes the cat","accepted":true}
+{"sentence":"cat sees dog","accepted":false}
+{"sentence":"the dog sees the cat","accepted":true}
+{"sentence":"a cat likes a dog","accepted":true}
+{"sentence":"a dog the cat sees","accepted":false}

@@ -1,0 +1,63 @@
+"""LoRA PEFT 回归：train/validation split、冻结检查、MSE 和权重规模。"""
+import torch
+from torch.nn import functional as F
+from loguru import logger
+from utils.v2io import save_torch_state, record_step
+from model import LoRALinear
+from data import regression_data
+
+def run(*,steps=30,seed=42,text_file=None):
+    """冻结基座 W，只训练低秩矩阵 B@A，在独立验证样本上计算 MSE。
+
+    核心不变量：B 零初始化使初始 adapter 不改变基座；训练后 W 的张量必须原样不变。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
+    (x_train,y_train),(x_valid,y_valid)=regression_data(seed)
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        import math
+        records=read_jsonl(text_file)
+        if len(records)<4 or not all(isinstance(r.get("x"),list) and isinstance(r.get("y"),list)
+            and len(r["x"])==8 and len(r["y"])==4
+            and all(type(v) in (float,int) and math.isfinite(v) for v in r["x"]+r["y"])
+            for r in records):
+            raise ValueError("LoRA JSONL: x为8个有限实数, y为4个有限实数")
+        a,b=nonoverlap_split(records)
+        x_train=torch.tensor([r["x"] for r in a],dtype=torch.float32)
+        y_train=torch.tensor([r["y"] for r in a],dtype=torch.float32)
+        x_valid=torch.tensor([r["x"] for r in b],dtype=torch.float32)
+        y_valid=torch.tensor([r["y"] for r in b],dtype=torch.float32)
+
+    layer=LoRALinear(in_dim=8,out_dim=4,rank=2,alpha=4)
+    frozen=layer.base.weight.detach().clone()
+    optim=torch.optim.AdamW(list(layer.A.parameters())+list(layer.B.parameters()),lr=.07)
+    with torch.no_grad():
+        baseline=F.mse_loss(layer(x_valid),y_valid).item()
+    for step in range(steps):
+        loss=F.mse_loss(layer(x_train),y_train)
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()))
+        if step in (0,steps-1):logger.info("LoRA iteration={} mse={:.4f}",step+1,loss.item())
+    with torch.no_grad():
+        pred=layer(x_valid)
+        val_loss=F.mse_loss(pred,y_valid).item()
+    assert torch.equal(frozen,layer.base.weight.detach()),"基座权重被修改！"
+    total=sum(p.numel() for p in layer.parameters())
+    trainable=sum(p.numel() for p in layer.parameters() if p.requires_grad)
+    rows=[{"target":y.tolist(),"prediction":[round(float(z),4) for z in x]}
+          for y,x in zip(y_valid[:5],pred[:5])]
+    save_torch_state(layer, {"in_dim": 8, "out_dim": 4, "rank": 2, "alpha": 4, "base_unchanged": True})
+
+    return {"task":"low_rank_finetuning","train_samples":len(x_train),"valid_samples":len(x_valid),
+            "baseline_val_mse":round(baseline,6),"val_mse":round(val_loss,6),
+            "trainable_parameters":trainable,"total_parameters":total,
+            "trainable_fraction":round(trainable/total,5),"base_unchanged":True},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)

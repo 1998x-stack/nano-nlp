@@ -1,0 +1,69 @@
+"""可验证组奖励 RL 完整闭环：group sampling、优势、策略更新、held-out verifier。"""
+import torch
+from torch.distributions import Categorical
+from loguru import logger
+from utils.v2io import save_torch_state, record_step
+from data import TRAIN,VALID
+from model import OpPolicy,verify
+
+def run(*,steps=30,seed=42,text_file=None):
+    """采样组内 candidate，通过外部执行器计算 reward，再做策略梯度。
+
+    核心不变量：奖励来源与策略模型独立；同组奖励无方差时相对优势为零。
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(1)
+    train,valid=TRAIN,VALID
+    if text_file:
+        from utils.data import read_jsonl,nonoverlap_split
+        rows=read_jsonl(text_file)
+        if len(rows)<4 or not all(r.get("operation") in ("add","multiply") and
+                 type(r.get("a")) is int and type(r.get("b")) is int for r in rows):
+            raise ValueError("Reasoning JSONL: operation=add/multiply, a/b是整数")
+        a,b=nonoverlap_split(rows)
+        encode=lambda r:(0 if r["operation"]=="add" else 1,r["a"],r["b"])
+        train=[encode(r) for r in a]
+        valid=[encode(r) for r in b]
+    policy=OpPolicy()
+    optim=torch.optim.AdamW(policy.parameters(),lr=.12)
+    group_size=8
+    rewards_history=[]
+    for t in range(steps):
+        losses=[]
+        mean_rewards=[]
+        for op,a,b in train:
+            dist=policy(op)
+            actions=dist.sample((group_size,))
+            attempts=[a+b if i.item()==0 else a*b for i in actions]
+            rewards=torch.tensor([verify(op,a,b,pred) for pred in attempts])
+            advantage=(rewards-rewards.mean())/(rewards.std(unbiased=False)+1e-6)
+            losses.append(-(advantage.detach()*dist.log_prob(actions)).mean())
+            mean_rewards.append(rewards.float().mean().item())
+        loss=torch.stack(losses).mean()
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        record_step(loss=float(loss.item()), group_reward=float(sum(mean_rewards)/len(mean_rewards)))
+        rewards_history.append(sum(mean_rewards)/len(mean_rewards))
+        if t in (0,steps-1):logger.info("RL iteration {} group reward={:.4f}",t+1,rewards_history[-1])
+    probs=policy.logits.softmax(-1).detach()
+    rows=[]
+    for op,a,b in valid:
+        action=int(policy.logits[op].argmax())
+        prediction=a+b if action==0 else a*b
+        gold=a+b if op==0 else a*b
+        rows.append({"operator_task":"add" if op==0 else "multiply",
+                     "a":a,"b":b,"pred":prediction,"gold":gold,
+                     "correct":bool(verify(op,a,b,prediction)),
+                     "p_add":round(float(probs[op,0]),4)})
+    save_torch_state(policy, {"task": "toy_operator_policy", "group_size": group_size, "reward_history": rewards_history})
+
+    return {"task":"verifiable_policy_optimization","train_tasks":len(train),
+            "valid_tasks":len(valid),"val_success_rate":sum(r["correct"] for r in rows)/len(rows),
+            "last_group_reward":round(rewards_history[-1],5)},rows
+
+
+def predict_saved(directory, text=None):
+    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+    from inference import infer
+    return infer(directory, text)
