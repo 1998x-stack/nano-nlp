@@ -1,5 +1,6 @@
 """nanoGPT 风格的小型 LSTM 字符语言模型。"""
 import argparse
+from pathlib import Path
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -23,11 +24,15 @@ class LSTMLM(nn.Module):
             loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
         return logits, loss
 
-def train(steps=25):
+def train(steps=25, text=TEXT):
     torch.manual_seed(42)
     torch.set_num_threads(1)
-    ids = torch.tensor([STOI[c] for c in TEXT], dtype=torch.long)
-    model = LSTMLM(len(CHARS))
+    if len(text) < 18:
+        raise ValueError('文本至少需要 18 个字符')
+    chars = sorted(set(text))
+    stoi = {c: i for i, c in enumerate(chars)}
+    ids = torch.tensor([stoi[c] for c in text], dtype=torch.long)
+    model = LSTMLM(len(chars))
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.015)
     for i in range(steps):
         offset = (i * 7) % (len(ids) - 17)
@@ -42,5 +47,8 @@ def train(steps=25):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--steps", type=int, default=25)
-    model, loss = train(p.parse_args().steps)
+    p.add_argument("--text-file", type=Path, help="可选本地 UTF-8 文本")
+    args = p.parse_args()
+    text = args.text_file.read_text(encoding="utf-8") if args.text_file else TEXT
+    model, loss = train(args.steps, text)
     print("RESULT:", {"loss": round(loss, 4), "parameters": sum(p.numel() for p in model.parameters())})

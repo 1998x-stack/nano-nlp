@@ -1,6 +1,7 @@
 """nanoGPT-inspired，单文件透明实现 Decoder-only Transformer。"""
 from dataclasses import dataclass
 import argparse
+from pathlib import Path
 import math
 import torch
 from torch import nn
@@ -58,11 +59,15 @@ class TinyGPT(nn.Module):
         loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten()) if targets is not None else None
         return logits, loss
 
-def train(steps=25):
+def train(steps=25, text=TEXT):
     torch.manual_seed(42)
     torch.set_num_threads(1)
-    ids = torch.tensor([STOI[ch] for ch in TEXT])
-    model = TinyGPT(len(CHARS))
+    if len(text) < 18:
+        raise ValueError('文本至少需要 18 个字符')
+    chars = sorted(set(text))
+    stoi = {c: i for i, c in enumerate(chars)}
+    ids = torch.tensor([stoi[ch] for ch in text])
+    model = TinyGPT(len(chars))
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.008)
     for i in range(steps):
         j = (i * 9) % (len(ids) - 17)
@@ -76,4 +81,7 @@ def train(steps=25):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--steps", type=int, default=25)
-    print("RESULT:", train(p.parse_args().steps))
+    p.add_argument("--text-file", type=Path, help="可选本地 UTF-8 文本")
+    args = p.parse_args()
+    text = args.text_file.read_text(encoding="utf-8") if args.text_file else TEXT
+    print("RESULT:", train(args.steps, text))
