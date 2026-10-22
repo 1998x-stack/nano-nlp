@@ -80,3 +80,20 @@ XX-topic/
 - HTML 展示了人为固定的动画或 loss 却标注成实际实验结果；
 - 用 mock 或伪造数据输出代替真实算法；
 - 以两步 smoke 成功宣称“算法在实际数据集上已被验证”。
+
+## v2 深度改造实施清单（在最新 CI 验证后评审）
+
+| 功能 | 覆盖范围 | 目前代码及可查验位置 |
+|---|---|---|
+| 分章节模型与真实任务闭环 | 17/17 | 每章 `data.py/model.py/project.py/demo.py` |
+| 从持久状态独立恢复预测 | 17/17 | `project.predict_saved`；10 个 Torch 章节专有 `inference.py` |
+| Loguru 与真正优化步骤历史 | 17/17（无梯度章节记录为空） | `utils/runtime.py`、`utils/v2io.py` |
+| 本地文本及任务标签 JSONL | 17/17 | `fixtures/`、`utils/data.py`、各章 `project.py` |
+| 浏览器导入训练指标和案例 | 17/17 | 每章 `index.html` 引用 `utils/experiment-viewer.js` |
+| 跨进程 train/predict 单元与集成检查 | 17/17 | `tests/test_v2_restore.py`、`tests/test_v2_fixture_integration.py` |
+| 数学不变量检查 | 神经架构与基础算法关键点 | `tests/test_math_invariants.py` 与基础单测 |
+| 研究级外部 benchmark 性能复现 | 不属于本次教学 MVP | 原论文训练成本/大型数据与本项目不同 |
+| 独立 checkpoint-only 重新评分命令 | 尚未普遍实现 | 现在训练时执行 held-out 验证；有跨进程 `--mode predict` |
+| 任务级错误分析可视化 | 实验案例 JSONL 可以导入 | 更复杂的 confusion matrix、PR/ROC 不是所有任务的共同合理指标 |
+
+这张表描述代码功能和可检查位置，**不等同于所有模型达到公开 benchmark 的论文成绩**。只有 GitHub CI 的对应提交全部通过后，才可确认这些运行性检查已被自动验证。需要进一步增加任务级数据集研究报告的章节，应单独立项，不将玩具评估冒充官方 benchmark。

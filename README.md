@@ -72,8 +72,13 @@ python 06-rnn-lstm/demo.py --steps 50 --text-file data/tiny_shakespeare_sample.t
 nano-nlp/
 ├── 01-symbolic-grammar/ ... 17-scaling-laws/
 │   ├── README.md    # 论文脉络、模型动机、公式和边界
-│   ├── demo.py      # 最小可运行算法与中文注释
-│   └── index.html   # 可交互过程与参数微实验
+│   ├── data.py      # 本章数据和任务定义
+│   ├── model.py     # 可审查的核心算法
+│   ├── project.py   # 训练/验证/保存逻辑
+│   ├── inference.py # PyTorch 章节：独立恢复推理
+│   ├── demo.py      # CLI 入口和 Loguru 记录
+│   ├── visualize.js # 专属机制交互
+│   └── index.html   # 交互教学与真实实验查看器
 ├── utils/
 │   ├── retrieval.py
 │   ├── viz.js
@@ -105,6 +110,38 @@ nano-nlp/
 - [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy（参考简洁的训练与数据准备风格；本仓库算法代码独立编写）
 - [Hugging Face Datasets](https://huggingface.co/datasets) 与各原始论文作者；本项目不将外部数据集/论文版权转移给教材。
 
-## v2.0 模块化改造
+## v2.0 · 17 章可恢复研究 MVP
 
-[完整改造计划](V2_PLAN.md)。章节正升级成 `data.py + model.py + project.py + demo.py`，使用 loguru 记录实验并保存指标和逐样本结果。第一批已完成 01–05 的任务闭环；其他章节将在验收通过后按阶段标记。
+v2.0 不再只提供小型单文件示例。每章现在都可在**训练/拟合进程退出之后**，从独立 checkpoint 恢复模型状态完成预测，并且有明确的训练、验证、数据源和算法边界。
+
+```bash
+git checkout v2.0
+python -m pip install -r requirements.txt
+# A. 训练与保存：默认 toy 数据，无需访问网络
+python 10-gpt-causal-lm/demo.py --steps 30 --output-dir outputs/10-gpt-causal-lm
+# B. 新进程加载同一 checkpoint 并生成
+python 10-gpt-causal-lm/demo.py --mode predict --output-dir outputs/10-gpt-causal-lm --input 'the'
+# C. 用 temperature/top-k 做可复现采样（只支持 GPT）
+python 10-gpt-causal-lm/demo.py --mode predict --output-dir outputs/10-gpt-causal-lm --input 'the' --temperature 0.8 --top-k 5 --new-tokens 40
+# D. 为所有章节提供外部小数据 schema
+python 13-rag-retrieval/demo.py --text-file fixtures/13-rag-retrieval.jsonl --output-dir outputs/rag-local
+python 13-rag-retrieval/demo.py --mode predict --output-dir outputs/rag-local --input 'which predicts masked tokens'
+# E. 全部测试；包含跨进程模型恢复、17个数据 fixture 与数学不变量
+python -m unittest discover -s tests -v
+```
+
+**统一产物：** `metrics.json`（评估指标与 seed）、`examples.jsonl`（验证样例）、`run.log`（Loguru）、`history.jsonl`（真实梯度优化轨迹；无梯度模型为空）和 `checkpoint.json` / `checkpoint.pt`（可恢复状态）。PyTorch 只存 `state_dict` 和构造参数，读取时使用 `weights_only=True`。
+
+**交互实验：** 每章 `index.html` 既有独立的算法机制组件，也有无需后端的 Evidence Viewer。打开页面后从同章 outputs 导入 `metrics.json`、`history.jsonl` 和 `examples.jsonl`，浏览器显示**真实训练**曲线与预测，和页面上的公式示意严格区分。
+
+**数据来源和许可证：** 17 个离线 fixture 的字段说明见 [fixtures/README.md](fixtures/README.md)。下载到本地的原始 Hugging Face 样本并不保证符合每章监督标签 schema；需要用户进行合法合规的数据转换，不能把纯文本当成已标注 benchmark。训练文本可以直接读取纯 TXT 或 `text` 字段 JSONL。
+
+**代码导航：** 每章 `data.py → model.py → project.py → demo.py`；十个 PyTorch 章节还含 `inference.py`；全局 `utils/v2io.py`、`utils/runtime.py`、`utils/data.py` 保证统一安全工件、loguru 日志和输入校验。
+
+- [v2.0 改造路线与严格验收](V2_ROADMAP.md)
+- [贡献规则与注释标准](AGENTS.md)
+- [论文链接索引](PAPERS.md)
+- [nanoGPT 代码风格的教学取舍](STYLE.md)
+
+**范围说明：** 完整教学型 MVP ≠ 完整工业框架或论文复现实验。RAG 采用抽取式证据回答而非外部 LLM 生成；推理 RL 是验证奖励的简化 policy gradient；Scaling Laws 的损失曲线是假设函数；真实 benchmark、复杂数据清洗与工业训练规模未被这些 toy 指标证明。
+
