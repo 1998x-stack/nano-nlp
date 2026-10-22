@@ -1,6 +1,7 @@
 """可运行 Bigram 任务：估计条件概率、验证 NLL 与生成。"""
 import math
 from loguru import logger
+from utils.v2io import save_json_state, load_json_state
 from data import TRAIN, VALID
 from model import BigramLM
 
@@ -44,6 +45,20 @@ def run(*, steps=1, seed=42, text_file=None):
     avg_nll = total_nll / tokens
     generated = generate(model)
     logger.info("vocab={} avg_nll={:.4f} generated={!r}",len(model.vocab),avg_nll,generated)
+    save_json_state({"vocab": sorted(model.vocab), "counts": {k: dict(v) for k, v in model.counts.items()}})
+
     return {"task":"next_word_prediction","train_samples":len(train),"valid_samples":len(valid),
             "vocab_size":len(model.vocab),"val_nll":round(avg_nll,6),
             "val_perplexity":round(math.exp(avg_nll),5),"generated":generated}, examples
+
+
+def predict_saved(directory, text=None):
+    """恢复 bigram 频数而非从验证语料重新拟合。"""
+    from collections import Counter, defaultdict
+    data = load_json_state(directory)
+    lm = BigramLM()
+    lm.vocab = set(data["vocab"])
+    lm.counts = defaultdict(Counter, {k: Counter(v) for k,v in data["counts"].items()})
+    word = (text or "likes").strip().lower().split()[-1]
+    return {"previous": word, "top_next": [{"word": w, "probability": round(p,6)}
+            for w,p in lm.predict(word)[:5]], "vocab": len(lm.vocab)}

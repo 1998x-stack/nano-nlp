@@ -1,6 +1,7 @@
 """数据清洗的实际 MVP：质量门槛→Exact Dedup→LSH 候选→Jaccard 复核→血缘。"""
 import hashlib
 from loguru import logger
+from utils.v2io import save_json_state, load_json_state
 from data import RAW
 from model import normalize,shingles,minhash,bands
 
@@ -41,7 +42,22 @@ def run(*,steps=1,seed=42,text_file=None):
         rows.append({"id":doc["id"],"source":doc["source"],"quality":doc["quality"],
                      "status":reason,"representative":rep})
         logger.debug("doc={} status={} representative={}",doc["id"],reason,rep)
+    save_json_state({"retained": kept, "decision_log": rows, "jaccard_threshold": 0.70})
+
     return {"task":"text_curation","raw_docs":len(RAW),"kept_docs":len(kept),
             "removed_docs":len(RAW)-len(kept),
             "dedup_retention_rate":round(len(kept)/len(RAW),5),
             "retained_ids":[doc["id"] for doc in kept]},rows
+
+
+def predict_saved(directory, text=None):
+    """为新文档显示和既有数据池的相似度，不在推理时修改保留集合。"""
+    state = load_json_state(directory)
+    query = text or "NLP models learn from a large text corpus."
+    neighbors = [{"id": row["id"], "jaccard": round(jaccard(query, row["text"]), 5)}
+                 for row in state["retained"]]
+    neighbors.sort(key=lambda row: (-row["jaccard"], row["id"]))
+    top = neighbors[:3]
+    duplicate = bool(top and top[0]["jaccard"] >= state["jaccard_threshold"])
+    return {"text": query, "is_near_duplicate": duplicate,
+            "representative": top[0]["id"] if duplicate else None, "neighbors": top}

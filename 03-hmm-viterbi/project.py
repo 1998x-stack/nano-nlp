@@ -2,6 +2,7 @@
 from collections import Counter, defaultdict
 from math import log
 from loguru import logger
+from utils.v2io import save_json_state, load_json_state
 from data import TRAIN, VALID
 
 class FittedHMM:
@@ -60,5 +61,24 @@ def run(*, steps=1, seed=42, text_file=None):
         total+=len(tags);correct+=sum(a==b for a,b in zip(tags,pred))
         rows.append({"tokens":words,"gold":tags,"pred":pred,
                      "viterbi_scores":[{k:round(v,5) for k,v in row.items()} for row in grid]})
+    save_json_state({"states": hmm.states, "vocab": hmm.vocab, "smoothing": hmm.smoothing,
+                     "initial": dict(hmm.initial),
+                     "transition": {k: dict(v) for k,v in hmm.transition.items()},
+                     "emission": {k: dict(v) for k,v in hmm.emission.items()}})
+
     return {"task":"pos_tagging","states":hmm.states,"train_sequences":len(TRAIN),
             "val_token_accuracy":correct/total,"val_tokens":total},rows
+
+
+def predict_saved(directory, text=None):
+    """从计数表重构同一个 HMM，再进行 Viterbi 解码。"""
+    from collections import Counter, defaultdict
+    data = load_json_state(directory)
+    hmm = FittedHMM(smoothing=data["smoothing"])
+    hmm.states, hmm.vocab = data["states"], data["vocab"]
+    hmm.initial = Counter(data["initial"])
+    hmm.transition = defaultdict(Counter, {k: Counter(v) for k,v in data["transition"].items()})
+    hmm.emission = defaultdict(Counter, {k: Counter(v) for k,v in data["emission"].items()})
+    tokens = (text or "dogs run").lower().split()
+    tags, scores = hmm.predict(tokens)
+    return {"tokens": tokens, "tags": tags, "last_log_scores": scores[-1] if scores else {}}

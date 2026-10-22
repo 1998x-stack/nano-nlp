@@ -1,5 +1,6 @@
 """Scaling Laws 玩具预算规划器：搜索参数/token 网格、验证预算、对比决策。"""
 from loguru import logger
+from utils.v2io import save_json_state, load_json_state
 from data import PARAMS,TOKENS,BUDGETS
 from model import synthetic_loss
 
@@ -21,6 +22,22 @@ def run(*,steps=1,seed=42,text_file=None):
     # 实验性规律：扩大预算不应使“最优”损失变差。
     assert all(rows[i]["estimated_loss"]<=rows[i-1]["estimated_loss"]+1e-6
                for i in range(1,len(rows)))
+    save_json_state({"budgets": BUDGETS, "params": PARAMS, "tokens": TOKENS,
+                     "scenario": "synthetic_coefficients_NOT_empirical"})
+
     return {"task":"compute_allocation","scenario":"synthetic_coefficients_NOT_empirical",
             "num_budgets":len(rows),"best_loss":rows[-1]["estimated_loss"],
             "largest_budget":rows[-1]["budget"]},rows
+
+
+def predict_saved(directory, text=None):
+    """预算规划器不涉及梯度学习；恢复并固定教学候选网格。"""
+    state = load_json_state(directory)
+    budget = int(text or str(state["budgets"][-1]))
+    choices = [(synthetic_loss(n,d),n,d) for n in state["params"]
+               for d in state["tokens"] if n*d <= budget]
+    if not choices:
+        raise ValueError("预算无法覆盖任一候选配置")
+    loss,n,d = min(choices)
+    return {"budget": budget, "n": n, "d": d, "loss": round(loss,6),
+            "scenario": state["scenario"], "empirical": False}
