@@ -43,7 +43,7 @@ def run(*,steps=30,seed=42,text_file=None):
         optim.zero_grad()
         loss.backward()
         optim.step()
-        record_step(loss=float(loss.item()))
+        record_step(loss=float(loss.item()), group_reward=float(sum(mean_rewards)/len(mean_rewards)))
         rewards_history.append(sum(mean_rewards)/len(mean_rewards))
         if t in (0,steps-1):logger.info("RL iteration {} group reward={:.4f}",t+1,rewards_history[-1])
     probs=policy.logits.softmax(-1).detach()

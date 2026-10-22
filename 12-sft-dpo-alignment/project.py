@@ -49,7 +49,7 @@ def run(*,steps=30,seed=42,text_file=None):
         optim.zero_grad()
         loss.backward()
         optim.step()
-        record_step(loss=float(loss.item()))
+        record_step(loss=float(loss.item()), stage="sft")
     reference=copy.deepcopy(policy).eval()
     for parameter in reference.parameters():
         parameter.requires_grad_(False)
@@ -66,7 +66,7 @@ def run(*,steps=30,seed=42,text_file=None):
         optim.zero_grad()
         loss.backward()
         optim.step()
-        record_step(loss=float(loss.item()))
+        record_step(loss=float(loss.item()), stage="dpo")
     q=torch.tensor([r[0] for r in valid])
     true=torch.tensor([r[1] for r in valid])
     false=torch.tensor([r[2] for r in valid])
