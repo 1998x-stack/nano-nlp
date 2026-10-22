@@ -71,6 +71,9 @@ def run_cli(project, *, default_steps=30, default_output=None):
     parser.add_argument("--text-file", type=Path, help="可选本地数据文本；仅支持该选项的章节会读取它")
     parser.add_argument("--mode", choices=("train", "predict"), default="train", help="独立训练或从磁盘恢复推理")
     parser.add_argument("--input", default=None, help="预测输入：文本、查询或逗号分隔 token；默认用内置示例")
+    parser.add_argument("--temperature", type=float, default=0.0, help="仅 GPT 推理：0 为 greedy，>0 为随机采样")
+    parser.add_argument("--top-k", type=int, default=0, help="仅 GPT 推理：0 使用全部词表")
+    parser.add_argument("--new-tokens", type=int, default=40, help="仅 GPT 推理：生成的新 token 数")
     args = parser.parse_args()
     if args.steps < 1:
         parser.error("--steps 必须 >= 1")
@@ -84,7 +87,14 @@ def run_cli(project, *, default_steps=30, default_output=None):
     if args.mode == "predict":
         if not hasattr(project, "predict_saved"):
             raise NotImplementedError("章节尚未定义 predict_saved")
-        answer = project.predict_saved(target, args.input)
+        if (args.temperature, args.top_k, args.new_tokens) != (0.0, 0, 40):
+            if Path(project.__file__).parent.name != "10-gpt-causal-lm":
+                parser.error("temperature/top-k/new-tokens 目前只支持 GPT 章节")
+        if Path(project.__file__).parent.name == "10-gpt-causal-lm":
+            answer = project.predict_saved(target, args.input, temperature=args.temperature,
+                    top_k=args.top_k, num_new_tokens=args.new_tokens)
+        else:
+            answer = project.predict_saved(target, args.input)
         logger.info("restored prediction completed | chapter={}", Path(project.__file__).parent.name)
         print("RESULT:", json.dumps(_jsonable(answer), ensure_ascii=False, allow_nan=False))
         return

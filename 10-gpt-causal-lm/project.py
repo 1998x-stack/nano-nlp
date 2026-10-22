@@ -44,7 +44,8 @@ def run(*,steps=30,seed=42,text_file=None):
                                    "validation_chunk_nll":round(v,5)} for v in v_nll]
 
 
-def predict_saved(directory, text=None):
-    """从训练时持久化的状态，在独立进程执行真实模型推理。"""
+def predict_saved(directory, text=None, *, temperature=0.0, top_k=0, num_new_tokens=40):
+    """独立恢复模型后，支持 greedy 与温度/top-k 自回归采样。"""
     from inference import infer
-    return infer(directory, text)
+    return infer(directory, text, temperature=temperature, top_k=top_k,
+                 num_new_tokens=num_new_tokens)
